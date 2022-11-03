@@ -2,16 +2,13 @@ cmake_minimum_required( VERSION 3.2 )
 
 project( aimpoint )
 
-find_package( OpenGL REQUIRED )
-
-include_directories( ${OPENGL_INCLUDE_DIRS} )
-
-set( GLFW_BUILD_DOCS OFF CACHE BOOL  "GLFW lib only" )
-set( GLFW_INSTALL OFF CACHE BOOL  "GLFW lib only" )
-
+# GLFW
+set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
+set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 add_subdirectory( "deps/GLFW" )
 
-#imgui
+# imgui
 add_subdirectory("deps/imgui")
 
 #glad
@@ -26,7 +23,7 @@ set( aimpoint-SRC
      )
      
 add_executable( aimpoint WIN32 ${aimpoint-SRC} )
-target_link_libraries( aimpoint ${OPENGL_LIBRARIES} glfw imgui )
+target_link_libraries( aimpoint ${OPENGL_LIBRARIES} glfw glad imgui)
 if( MSVC )
     if(${CMAKE_VERSION} VERSION_LESS "3.6.0") 
         message( "\n\t[ WARNING ]\n\n\tCMake version lower than 3.6.\n\n\t - Please update CMake and rerun; OR\n\t - Manually set 'aimpoint' as StartUp Project in Visual Studio.\n" )
