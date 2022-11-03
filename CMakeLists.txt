@@ -11,8 +11,11 @@ add_subdirectory( "deps/GLFW" )
 # imgui
 add_subdirectory("deps/imgui")
 
-#glad
+# glad
 add_subdirectory("deps/glad")
+
+# glm
+add_subdirectory("deps/glm")
 
 if( MSVC )
     SET( CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /ENTRY:mainCRTStartup" )
@@ -23,7 +26,7 @@ set( aimpoint-SRC
      )
      
 add_executable( aimpoint WIN32 ${aimpoint-SRC} )
-target_link_libraries( aimpoint ${OPENGL_LIBRARIES} glfw glad imgui)
+target_link_libraries( aimpoint ${OPENGL_LIBRARIES} glfw glad imgui glm)
 if( MSVC )
     if(${CMAKE_VERSION} VERSION_LESS "3.6.0") 
         message( "\n\t[ WARNING ]\n\n\tCMake version lower than 3.6.\n\n\t - Please update CMake and rerun; OR\n\t - Manually set 'aimpoint' as StartUp Project in Visual Studio.\n" )
