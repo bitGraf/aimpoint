@@ -1,10 +1,8 @@
 #pragma once
 
-namespace aimpoint {
+#include "event.h"
 
-    struct Event {
-        int nah;
-    };
+namespace aimpoint {
 
 	/* virtual class */
 	class Window {

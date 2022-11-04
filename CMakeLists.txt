@@ -28,6 +28,8 @@ set( aimpoint-SRC
      src/window.h
      src/platform/window_impl_glfw.cpp
      src/platform/window_impl_glfw.h
+     src/event.h
+     src/event_types.h
      )
      
 add_executable( aimpoint WIN32 ${aimpoint-SRC} )
