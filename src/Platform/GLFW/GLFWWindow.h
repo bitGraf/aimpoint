@@ -9,33 +9,37 @@ namespace aimpoint {
 	class Window_glfw : public Window {
 
     public:
-        Window_glfw(std::string title, unsigned int height, unsigned int width);
+        Window_glfw(const WindowProps& props);
         virtual ~Window_glfw();
 
-        void Update() override;
+        virtual void ProcessEvents() override;
+        virtual void SwapBuffers() override;
 
-        unsigned int GetWidth() const override { return m_data.Width; }
-        unsigned int GetHeight() const override { return m_data.Height; }
-        unsigned int GetXpos() const override { return m_data.Xpos; }
-        unsigned int GetYpos() const override { return m_data.Ypos; }
+        inline uint32_t GetWidth() const override { return m_data.Width; }
+        inline uint32_t GetHeight() const override { return m_data.Height; }
+        
+        virtual std::pair<uint32_t, uint32_t> GetSize() const override { return { m_data.Width, m_data.Height }; }
+        virtual std::pair<float, float> GetWindowPos() const override;
 
         void SetEventCallback(const EventCallbackFcn& callback) override { m_data.EventCallback = callback; }
         void SetVSync(bool enabled) override;
         bool IsVSync() const override;
 
-        bool ShouldClose() const;
+        virtual const std::string& GetTitle() const override { return m_data.Title; }
+        virtual void SetTitle(const std::string& title) override;
 
         inline virtual void* GetNativeWindow() const override { return (void*)m_glfwWindow; }
-        inline virtual GraphicsContext* GetGraphicsContext() const override { return m_Context; }
+
+        inline virtual RendererContext* GetRenderContext() override { return m_RenderContext; }
 
     private:
         /* Startup and shutdown functions */
-        virtual void Init(std::string title, unsigned int height, unsigned int width);
+        virtual void Init(const WindowProps& props);
         virtual void Shutdown();
 
         /* glfw handle */
         GLFWwindow* m_glfwWindow;
-        GraphicsContext* m_Context;
+        GLFWcursor* m_ImGuiMouseCursors[9] = { 0 };
 
         /* for use with glfw getUserDataPointer */
         struct WindowData {
@@ -48,5 +52,8 @@ namespace aimpoint {
         };
 
         WindowData m_data;
+        float m_LastFrameTime = 0.0f;
+
+        RendererContext* m_RenderContext;
     };
 }

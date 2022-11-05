@@ -26,22 +26,57 @@ if( MSVC )
     SET( CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /ENTRY:mainCRTStartup" )
 endif()
 
-set( aimpoint-SRC
+set( aimpoint-CORE-SRC
+     src/Core.h
      src/main.cpp
      src/Log.h
      src/Log.cpp
-     # src/Window.h
-     # src/GraphicsContext.h
-     # src/Event.h
-     # src/EventTypes.h
-     # src/Platform/GLFW/GLFWWindow.cpp
-     # src/Platform/GLFW/GLFWWindow.h
-     # src/Platform/OpenGL/OpenGlGraphicsContext.cpp
-     # src/Platform/OpenGL/OpenGlGraphicsContext.h
+     src/Application.h
+     src/Application.cpp
+     src/Window.h
+     src/Event.h
+     src/EventTypes.h
+     src/Platform/GLFW/GLFWWindow.cpp
+     src/Platform/GLFW/GLFWWindow.h
      )
+
+set( aimpoint-RENDERER-SRC 
+     src/Renderer/RendererContext.h
+     src/Renderer/RendererContext.cpp
+     src/Renderer/Framebuffer.h
+    )
+
+set( aimpoint-OPENGL-SRC
+     src/Platform/OpenGL/OpenGLContext.cpp
+     src/Platform/OpenGL/OpenGLContext.h
+     # src/Platform/OpenGL/OpenGLFramebuffer.cpp
+     # src/Platform/OpenGL/OpenGLFramebuffer.h
+     # src/Platform/OpenGL/OpenGLImGuiLayer.cpp
+     # src/Platform/OpenGL/OpenGLImGuiLayer.h
+     # src/Platform/OpenGL/OpenGLIndexBuffer.cpp
+     # src/Platform/OpenGL/OpenGLIndexBuffer.h
+     # src/Platform/OpenGL/OpenGLMaterial.cpp
+     # src/Platform/OpenGL/OpenGLMaterial.h
+     # src/Platform/OpenGL/OpenGLPipeline.cpp
+     # src/Platform/OpenGL/OpenGLPipeline.h
+     # src/Platform/OpenGL/OpenGLRenderer.cpp
+     # src/Platform/OpenGL/OpenGLRenderer.h
+     # src/Platform/OpenGL/OpenGLRenderPass.cpp
+     # src/Platform/OpenGL/OpenGLRenderPass.h
+     # src/Platform/OpenGL/OpenGLShader.cpp
+     # src/Platform/OpenGL/OpenGLShader.h
+     # src/Platform/OpenGL/OpenGLTexture.cpp
+     # src/Platform/OpenGL/OpenGLTexture.h
+     # src/Platform/OpenGL/OpenGLVertexBuffer.cpp
+     # src/Platform/OpenGL/OpenGLVertexBuffer.h
+    )
      
 # add_executable( aimpoint WIN32 ${aimpoint-SRC} )
-add_executable( aimpoint ${aimpoint-SRC} )
+add_executable( aimpoint ${aimpoint-CORE-SRC} ${aimpoint-RENDERER-SRC} ${aimpoint-OPENGL-SRC})
+source_group("Core"     FILES ${aimpoint-CORE-SRC} )
+source_group("Renderer" FILES ${aimpoint-RENDERER-SRC} )
+source_group("OpenGL"   FILES ${aimpoint-OPENGL-SRC} )
+
 target_link_libraries( aimpoint ${OPENGL_LIBRARIES} glfw glad imgui glm spdlog::spdlog)
 target_include_directories( aimpoint PRIVATE src/)
 target_precompile_headers(aimpoint PRIVATE 
@@ -50,6 +85,7 @@ target_precompile_headers(aimpoint PRIVATE
     <vector>
     <unordered_map>
     <iostream>
+    <stdint.h>
     )
 if( MSVC )
     if(${CMAKE_VERSION} VERSION_LESS "3.6.0") 

@@ -19,11 +19,11 @@ namespace aimpoint {
         s_Logger->info("Logger created.");
 
         // Test levels
-        s_Logger->trace("Trace Message!");
-        s_Logger->debug("Debug Message!");
-        s_Logger->info("Info Message!");
-        s_Logger->warn("Warning Message!");
-        s_Logger->error("Error Message!");
-        s_Logger->critical("Critical Message!");
+        //s_Logger->trace("Trace Message!");
+        //s_Logger->debug("Debug Message!");
+        //s_Logger->info("Info Message!");
+        //s_Logger->warn("Warning Message!");
+        //s_Logger->error("Error Message!");
+        //s_Logger->critical("Critical Message!");
 	}
 }
