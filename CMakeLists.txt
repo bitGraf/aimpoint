@@ -19,24 +19,28 @@ add_subdirectory("deps/glad")
 # glm
 add_subdirectory("deps/glm")
 
+# spdlog
+add_subdirectory("deps/spdlog")
+
 if( MSVC )
     SET( CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /ENTRY:mainCRTStartup" )
 endif()
 
 set( aimpoint-SRC
      src/main.cpp
-     src/Window.h
-     src/GraphicsContext.h
-     src/Event.h
-     src/EventTypes.h
-     src/Platform/GLFW/GLFWWindow.cpp
-     src/Platform/GLFW/GLFWWindow.h
-     src/Platform/OpenGL/OpenGlGraphicsContext.cpp
-     src/Platform/OpenGL/OpenGlGraphicsContext.h
+     # src/Window.h
+     # src/GraphicsContext.h
+     # src/Event.h
+     # src/EventTypes.h
+     # src/Platform/GLFW/GLFWWindow.cpp
+     # src/Platform/GLFW/GLFWWindow.h
+     # src/Platform/OpenGL/OpenGlGraphicsContext.cpp
+     # src/Platform/OpenGL/OpenGlGraphicsContext.h
      )
      
-add_executable( aimpoint WIN32 ${aimpoint-SRC} )
-target_link_libraries( aimpoint ${OPENGL_LIBRARIES} glfw glad imgui glm)
+# add_executable( aimpoint WIN32 ${aimpoint-SRC} )
+add_executable( aimpoint ${aimpoint-SRC} )
+target_link_libraries( aimpoint ${OPENGL_LIBRARIES} glfw glad imgui glm spdlog::spdlog)
 target_include_directories( aimpoint PRIVATE src/)
 target_precompile_headers(aimpoint PRIVATE 
     <string>
