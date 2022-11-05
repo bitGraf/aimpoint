@@ -1,4 +1,4 @@
-#include "window.h"
+#include "Window.h"
 
 #include <GLFW/glfw3.h>
 
@@ -26,7 +26,7 @@ namespace aimpoint {
         bool ShouldClose() const;
 
         inline virtual void* GetNativeWindow() const override { return (void*)m_glfwWindow; }
-        //inline virtual GraphicsContext* GetGraphicsContext() const override { return m_Context; }
+        inline virtual GraphicsContext* GetGraphicsContext() const override { return m_Context; }
 
     private:
         /* Startup and shutdown functions */
@@ -35,7 +35,7 @@ namespace aimpoint {
 
         /* glfw handle */
         GLFWwindow* m_glfwWindow;
-        //GraphicsContext* m_Context;
+        GraphicsContext* m_Context;
 
         /* for use with glfw getUserDataPointer */
         struct WindowData {

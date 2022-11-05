@@ -1,6 +1,7 @@
 #pragma once
 
-#include "event.h"
+#include "Event.h"
+#include "GraphicsContext.h"
 
 namespace aimpoint {
 
@@ -27,7 +28,7 @@ namespace aimpoint {
         virtual bool ShouldClose() const = 0;
 
         virtual void* GetNativeWindow() const = 0;
-        //virtual GraphicsContext* GetGraphicsContext() const = 0;
+        virtual GraphicsContext* GetGraphicsContext() const = 0;
 
         /* Create a new window */
         static Window* Create(std::string title = "Window", unsigned int height = 600, unsigned int width = 800);

@@ -1,6 +1,9 @@
-#include "window_impl_glfw.h"
+#include "GLFWWindow.h"
 
 #include <assert.h>
+
+#include "Platform/OpenGL/OpenGLGraphicsContext.h"
+#include "EventTypes.h"
 
 namespace aimpoint {
     /* only init glfw once */
@@ -52,8 +55,8 @@ namespace aimpoint {
         m_data.Xpos = xx;
         m_data.Ypos = yy;
 
-        //m_Context = new OpenGLGraphicsContext(m_glfwWindow);
-        //m_Context->Init();
+        m_Context = new OpenGLGraphicsContext(m_glfwWindow);
+        m_Context->Init();
 
         glfwSetWindowUserPointer(m_glfwWindow, &m_data);
         SetVSync(true);
@@ -64,8 +67,8 @@ namespace aimpoint {
             data.Width = width;
             data.Height = height;
 
-            //WindowResizeEvent event(width, height);
-            //data.EventCallback(event);
+            WindowResizeEvent event(width, height);
+            data.EventCallback(event);
             });
 
         glfwSetWindowPosCallback(m_glfwWindow, [](GLFWwindow* window, int xpos, int ypos) {
@@ -73,22 +76,21 @@ namespace aimpoint {
             data.Xpos = xpos;
             data.Ypos = ypos;
 
-            //WindowMoveEvent event(xpos, ypos);
-            //data.EventCallback(event);
+            WindowMoveEvent event(xpos, ypos);
+            data.EventCallback(event);
             });
 
 
         glfwSetWindowCloseCallback(m_glfwWindow, [](GLFWwindow* window) {
             WindowData& data = *(WindowData*)glfwGetWindowUserPointer(window);
 
-            //WindowCloseEvent event;
-            //data.EventCallback(event);
+            WindowCloseEvent event;
+            data.EventCallback(event);
             });
 
         glfwSetKeyCallback(m_glfwWindow, [](GLFWwindow* window, int key, int scancode, int action, int mods) {
             WindowData& data = *(WindowData*)glfwGetWindowUserPointer(window);
 
-            /*
             switch (action)
             {
             case GLFW_PRESS: {
@@ -107,20 +109,18 @@ namespace aimpoint {
                 break;
             }
             }
-            */
             });
 
         glfwSetCharCallback(m_glfwWindow, [](GLFWwindow* window, unsigned int keycode) {
             WindowData& data = *(WindowData*)glfwGetWindowUserPointer(window);
 
-            //KeyTypedEvent event(keycode);
-            //data.EventCallback(event);
+            KeyTypedEvent event(keycode);
+            data.EventCallback(event);
             });
 
         glfwSetMouseButtonCallback(m_glfwWindow, [](GLFWwindow* window, int button, int action, int mods) {
             WindowData& data = *(WindowData*)glfwGetWindowUserPointer(window);
 
-            /*
             switch (action)
             {
             case GLFW_PRESS: {
@@ -134,21 +134,20 @@ namespace aimpoint {
                 break;
             }
             }
-            */
             });
 
         glfwSetScrollCallback(m_glfwWindow, [](GLFWwindow* window, double xoffset, double yoffset) {
             WindowData& data = *(WindowData*)glfwGetWindowUserPointer(window);
 
-            //MouseScrolledEvent event((float)xoffset, (float)yoffset);
-            //data.EventCallback(event);
+            MouseScrolledEvent event((float)xoffset, (float)yoffset);
+            data.EventCallback(event);
             });
 
         glfwSetCursorPosCallback(m_glfwWindow, [](GLFWwindow* window, double xpos, double ypos) {
             WindowData& data = *(WindowData*)glfwGetWindowUserPointer(window);
 
-            //MouseMovedEvent event((float)xpos, (float)ypos);
-            //data.EventCallback(event);
+            MouseMovedEvent event((float)xpos, (float)ypos);
+            data.EventCallback(event);
             });
     }
 
@@ -158,7 +157,7 @@ namespace aimpoint {
 
     void Window_glfw::Update() {
         glfwPollEvents();
-        //m_Context->SwapBuffers();
+        m_Context->SwapBuffers();
     }
 
     void Window_glfw::SetVSync(bool enabled) {

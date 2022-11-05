@@ -25,11 +25,14 @@ endif()
 
 set( aimpoint-SRC
      src/main.cpp
-     src/window.h
-     src/platform/window_impl_glfw.cpp
-     src/platform/window_impl_glfw.h
-     src/event.h
-     src/event_types.h
+     src/Window.h
+     src/GraphicsContext.h
+     src/Event.h
+     src/EventTypes.h
+     src/Platform/GLFW/GLFWWindow.cpp
+     src/Platform/GLFW/GLFWWindow.h
+     src/Platform/OpenGL/OpenGlGraphicsContext.cpp
+     src/Platform/OpenGL/OpenGlGraphicsContext.h
      )
      
 add_executable( aimpoint WIN32 ${aimpoint-SRC} )

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "event.h"
+#include "Event.h"
 #include <sstream>
 
 namespace aimpoint {
