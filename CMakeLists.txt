@@ -28,6 +28,8 @@ endif()
 
 set( aimpoint-SRC
      src/main.cpp
+     src/Log.h
+     src/Log.cpp
      # src/Window.h
      # src/GraphicsContext.h
      # src/Event.h
