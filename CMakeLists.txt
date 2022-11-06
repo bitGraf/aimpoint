@@ -26,29 +26,38 @@ if( MSVC )
     SET( CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /ENTRY:mainCRTStartup" )
 endif()
 
-set( aimpoint-CORE-SRC
-     src/Core.h
-     src/main.cpp
-     src/Log.h
-     src/Log.cpp
-     src/Application.h
-     src/Application.cpp
-     src/Window.h
-     src/Event.h
-     src/EventTypes.h
-     src/Platform/GLFW/GLFWWindow.cpp
-     src/Platform/GLFW/GLFWWindow.h
-     )
+set( SRC-DIR "src")
+set( CORE-SRC-DIR "${SRC-DIR}/Core")
+set( OpenGL-SRC-DIR "${SRC-DIR}/Platform/OpenGL")
+set( Renderer-SRC-DIR "${SRC-DIR}/Renderer")
+
+set(aimpoint-CORE-SRC
+    ${CORE-SRC-DIR}/Application.cpp
+    ${CORE-SRC-DIR}/Application.h
+    ${CORE-SRC-DIR}/Core.h
+    ${CORE-SRC-DIR}/Event.h
+    ${CORE-SRC-DIR}/EventTypes.h
+    ${CORE-SRC-DIR}/KeyCodes.h
+    ${CORE-SRC-DIR}/Log.cpp
+    ${CORE-SRC-DIR}/Log.h
+    ${CORE-SRC-DIR}/Window.h
+
+    ${CORE-SRC-DIR}/Timing/Clock.h
+    ${CORE-SRC-DIR}/Timing/Clock.cpp
+    
+    ${SRC-DIR}/Platform/GLFW/GLFWWindow.cpp
+    ${SRC-DIR}/Platform/GLFW/GLFWWindow.h
+    )
 
 set( aimpoint-RENDERER-SRC 
-     src/Renderer/RendererContext.h
-     src/Renderer/RendererContext.cpp
-     src/Renderer/Framebuffer.h
+     ${Renderer-SRC-DIR}/RendererContext.h
+     ${Renderer-SRC-DIR}/RendererContext.cpp
+     ${Renderer-SRC-DIR}/Framebuffer.h
     )
 
 set( aimpoint-OPENGL-SRC
-     src/Platform/OpenGL/OpenGLContext.cpp
-     src/Platform/OpenGL/OpenGLContext.h
+     ${OpenGL-SRC-DIR}/OpenGLContext.cpp
+     ${OpenGL-SRC-DIR}/OpenGLContext.h
      # src/Platform/OpenGL/OpenGLFramebuffer.cpp
      # src/Platform/OpenGL/OpenGLFramebuffer.h
      # src/Platform/OpenGL/OpenGLImGuiLayer.cpp
@@ -72,7 +81,7 @@ set( aimpoint-OPENGL-SRC
     )
      
 # add_executable( aimpoint WIN32 ${aimpoint-SRC} )
-add_executable( aimpoint ${aimpoint-CORE-SRC} ${aimpoint-RENDERER-SRC} ${aimpoint-OPENGL-SRC})
+add_executable( aimpoint ${SRC-DIR}/main.cpp ${aimpoint-CORE-SRC} ${aimpoint-RENDERER-SRC} ${aimpoint-OPENGL-SRC})
 source_group("Core"     FILES ${aimpoint-CORE-SRC} )
 source_group("Renderer" FILES ${aimpoint-RENDERER-SRC} )
 source_group("OpenGL"   FILES ${aimpoint-OPENGL-SRC} )

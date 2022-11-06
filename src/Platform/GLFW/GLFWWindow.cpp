@@ -1,6 +1,6 @@
 #include "GLFWWindow.h"
 
-#include "EventTypes.h"
+#include "Core/EventTypes.h"
 
 #include <imgui.h>
 
