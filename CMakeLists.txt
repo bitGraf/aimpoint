@@ -44,6 +44,7 @@ set(aimpoint-CORE-SRC
 
     ${SRC-DIR}/Math/RK4.cpp
     ${SRC-DIR}/Math/RK4.h
+    ${SRC-DIR}/Math/SignalLogger.h
 
     ${CORE-SRC-DIR}/Timing/Clock.h
     ${CORE-SRC-DIR}/Timing/Clock.cpp

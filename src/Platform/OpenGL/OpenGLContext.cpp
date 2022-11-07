@@ -35,4 +35,8 @@ namespace aimpoint {
     void OpenGLContext::SwapBuffers() {
         glfwSwapBuffers(m_WindowHandle);
     }
+
+    void OpenGLContext::BeginFrame() {
+        glClear(GL_COLOR_BUFFER_BIT);
+    }
 }
