@@ -5,6 +5,7 @@
 #include "Math/RK4.h"
 #include "Math/SignalLogger.h"
 
+#include <glfw/glfw3.h>
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
@@ -104,6 +105,8 @@ namespace aimpoint {
         IMGUI_CHECKVERSION();
         ImGui::CreateContext();
         ImGuiIO& io = ImGui::GetIO(); (void)io;
+        //io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
+        io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 
         // Setup Dear ImGui style
         ImGui::StyleColorsDark();
@@ -138,6 +141,11 @@ namespace aimpoint {
             ImGui_ImplOpenGL3_NewFrame();
             ImGui_ImplGlfw_NewFrame();
             ImGui::NewFrame();
+
+            //ImGui::ShowExampleAppDockSpace(&show_demo_window);
+            //if (show_demo_window)
+            //    ImGui::ShowDemoWindow(&show_demo_window);
+    
 
             // 2. Show a simple window that we create ourselves. We use a Begin/End pair to create a named window.
             {
@@ -185,6 +193,15 @@ namespace aimpoint {
 
             // Rendering
             ImGui::Render();
+
+            // Update and Render additional Platform Windows
+            if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+            {
+                GLFWwindow* backup_current_context = glfwGetCurrentContext();
+                ImGui::UpdatePlatformWindows();
+                ImGui::RenderPlatformWindowsDefault();
+                glfwMakeContextCurrent(backup_current_context);
+            }
             ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
             window->SwapBuffers();
