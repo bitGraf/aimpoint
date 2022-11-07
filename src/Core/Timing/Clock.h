@@ -11,7 +11,9 @@ namespace aimpoint {
 
         void Create(double dt, double start_time);
         void Advance();
-        double GetTime() const;
+
+        inline double GetTime() const { return cur_time; }
+        inline double GetTimestep() const { return Ts; }
 
     private:
         double cur_time;

@@ -2,7 +2,22 @@
 
 #include "KeyCodes.h"
 
+#include "Math/RK4.h"
+
 #define BIND_EVENT_FN(fn) [this](auto&&... args) -> decltype(auto) { return this->fn(std::forward<decltype(args)>(args)...); }
+
+glm::vec2 mass_spring_damper(float t, glm::vec2 x) {
+    // system parameters
+    float b = 0.0f;
+    float M = 1.0f;
+    float K = 1.0f;
+    float L = 1.0f;
+
+    glm::vec2 x_dot;
+    x_dot.x = x.y; // x1_dot = x2
+    x_dot.y = -(b/M)*x.y - (K/M)*x.x + K*L/M;
+    return x_dot;
+}
 
 namespace aimpoint {
 
@@ -21,13 +36,16 @@ namespace aimpoint {
         aimpoint::Window* window = aimpoint::Window::Create();
         window->SetEventCallback(BIND_EVENT_FN(Application::HandleEvent));
 
-        while (!m_done) {
-            window->ProcessEvents();
+        // Initialize mass-spring-damper system
+        glm::vec2 x(1.5, 0);
 
-            LOG_TRACE("t={:08.3f}", m_clock.GetTime());
+        while (!m_done) {
+            LOG_TRACE("t={:08.3f}x={:18.4f}v={:28.4f}", m_clock.GetTime(), x.x, x.y);
+            x = Integrate_RK4(mass_spring_damper, x, m_clock);
 
             window->SwapBuffers();
             m_clock.Advance();
+            window->ProcessEvents();
         }
 
         LOG_INFO("Shutting Down...");

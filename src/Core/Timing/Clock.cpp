@@ -19,8 +19,4 @@ namespace aimpoint {
     void Clock::Advance() {
         cur_time += Ts;
     }
-
-    double Clock::GetTime() const {
-        return cur_time;
-    }
 }
