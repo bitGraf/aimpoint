@@ -35,7 +35,7 @@ namespace aimpoint {
         aimpoint::Log::Init();
         LOG_INFO("Hiyaa =^.^=");
 
-        m_clock.Create(0.1, 0.0);
+        m_clock.Create(1/120.0, 0.0);
 
         aimpoint::Window* window = aimpoint::Window::Create();
         window->SetEventCallback(BIND_EVENT_FN(Application::HandleEvent));
@@ -91,6 +91,7 @@ namespace aimpoint {
                 ImGui::SliderFloat("Spring Constant", &K, 0.01f, 10.0f);
                 ImGui::SliderFloat("Damping Coefficient", &b, 0.0f, 10.0f);
                 ImGui::SliderFloat("Neutral Length", &L, -5.0f, 5.0f);
+                ImGui::Text("Period: %6.3f sec", 2.0f*3.14159f*sqrt(M/K));
 
                 //ImGui::Checkbox("Damping", &show_demo_window);      // Edit bools storing our window open/close state
 
