@@ -10,6 +10,8 @@
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
 
+#include "implot.h"
+
 #define BIND_EVENT_FN(fn) [this](auto&&... args) -> decltype(auto) { return this->fn(std::forward<decltype(args)>(args)...); }
 
 // system parameters
@@ -25,7 +27,7 @@ glm::vec2 mass_spring_damper(float t, glm::vec2 x) {
 }
 
 aimpoint::State6DoF rigid_body(float t, aimpoint::State6DoF x) {
-    glm::vec3 net_force(0, 0, 0);
+    glm::vec3 net_force(0, -9.81, 0);
     float mass = 1;
     glm::vec3 net_moment(0, 0, 0);
     glm::vec3 inertia_p(.2f, .3f, .4f);
@@ -75,6 +77,8 @@ namespace aimpoint {
         aimpoint::Log::Init();
         LOG_INFO("Hiyaa =^.^=");
 
+        // Simulations params
+
         m_clock.Create(1/120.0, 0.0);
 
         aimpoint::Window* window = aimpoint::Window::Create();
@@ -83,23 +87,12 @@ namespace aimpoint {
         // Initialize mass-spring-damper system
         State6DoF x;
         x.Position = glm::vec3(0, 0, 0);
-        x.Velocity = glm::vec3(0, 0, 0);
+        x.Velocity = glm::vec3(1, 1, 0);
         x.Orientation = glm::vec4(0, 0, 0, 1);
-        x.BodyRate = glm::vec3(0.1f, 15.0f, 0.1f);
+        x.BodyRate = glm::vec3(0, 0, 0);
 
-        SignalLogger<250> logger_q1;
-        SignalLogger<250> logger_q2;
-        SignalLogger<250> logger_q3;
-        SignalLogger<250> logger_q4;
-
-        SignalLogger<250> logger_yaw;
-        SignalLogger<250> logger_pitch;
-        SignalLogger<250> logger_roll;
-
-        logger_q1.AddSample(x.Orientation.x);
-        logger_q2.AddSample(x.Orientation.y);
-        logger_q3.AddSample(x.Orientation.z);
-        logger_q4.AddSample(x.Orientation.w);
+        SignalLogger<250> logger_x;
+        SignalLogger<250> logger_y;
 
         // Setup Dear ImGui context
         IMGUI_CHECKVERSION();
@@ -107,6 +100,8 @@ namespace aimpoint {
         ImGuiIO& io = ImGui::GetIO(); (void)io;
         //io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
         io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+
+        ImPlot::CreateContext();
 
         // Setup Dear ImGui style
         ImGui::StyleColorsDark();
@@ -123,29 +118,13 @@ namespace aimpoint {
 
         while (!m_done) {
             //LOG_TRACE("t={:08.3f}x={:18.4f}v={:28.4f}", m_clock.GetTime(), x.x, x.y);
-            x = Integrate_RK4(rigid_body, x, m_clock);
-            logger_q1.AddSample(x.Orientation.x);
-            logger_q2.AddSample(x.Orientation.y);
-            logger_q3.AddSample(x.Orientation.z);
-            logger_q4.AddSample(x.Orientation.w);
-
-            // convet to euler angles
-            float r2d = 180.0f/3.14159f;
-            logger_roll.AddSample( r2d * atan2(2*x.Orientation.y*x.Orientation.w - 2*x.Orientation.x*x.Orientation.z, 1 - 2*x.Orientation.y*x.Orientation.y - 2*x.Orientation.z*x.Orientation.z));
-            logger_pitch.AddSample(r2d * atan2(2*x.Orientation.x*x.Orientation.w - 2*x.Orientation.y*x.Orientation.z, 1 - 2*x.Orientation.x*x.Orientation.x - 2*x.Orientation.z*x.Orientation.z));
-            logger_yaw.AddSample(  r2d * asin(2*x.Orientation.x*x.Orientation.y + 2*x.Orientation.z*x.Orientation.w));
 
             window->GetRenderContext()->BeginFrame(); //TODO: temp workaround
 
             // Start the Dear ImGui frame
             ImGui_ImplOpenGL3_NewFrame();
             ImGui_ImplGlfw_NewFrame();
-            ImGui::NewFrame();
-
-            //ImGui::ShowExampleAppDockSpace(&show_demo_window);
-            //if (show_demo_window)
-            //    ImGui::ShowDemoWindow(&show_demo_window);
-    
+            ImGui::NewFrame();    
 
             // 2. Show a simple window that we create ourselves. We use a Begin/End pair to create a named window.
             {
@@ -154,38 +133,44 @@ namespace aimpoint {
 
                 ImGui::Begin("Mass Spring Damper System");                          // Create a window called "Hello, world!" and append into it.
 
-                ImGui::Text("System Parameters");
-                ImGui::SliderFloat("Mass", &M, 0.01f, 10.0f);
-                ImGui::SliderFloat("Spring Constant", &K, 0.01f, 10.0f);
-                ImGui::SliderFloat("Damping Coefficient", &b, 0.0f, 10.0f);
-                ImGui::SliderFloat("Neutral Length", &L, -5.0f, 5.0f);
-                //ImGui::Text("Period: %6.3f sec", 2.0f*3.14159f*sqrt(M/K));
-                ImGui::Text("Period: %.6f sec", sqrt(x.Orientation.x*x.Orientation.x + x.Orientation.w*x.Orientation.w + x.Orientation.y*x.Orientation.y + x.Orientation.z*x.Orientation.z));
+                //ImGui::Text("System Parameters");
+                //ImGui::SliderFloat("Mass", &M, 0.01f, 10.0f);
+                //ImGui::SliderFloat("Spring Constant", &K, 0.01f, 10.0f);
+                //ImGui::SliderFloat("Damping Coefficient", &b, 0.0f, 10.0f);
+                //ImGui::SliderFloat("Neutral Length", &L, -5.0f, 5.0f);
+                ////ImGui::Text("Period: %6.3f sec", 2.0f*3.14159f*sqrt(M/K));
+                //ImGui::Text("Period: %.6f sec", sqrt(x.Orientation.x*x.Orientation.x + x.Orientation.w*x.Orientation.w + x.Orientation.y*x.Orientation.y + x.Orientation.z*x.Orientation.z));
 
                 //ImGui::Checkbox("Damping", &show_demo_window);      // Edit bools storing our window open/close state
 
                 if (ImGui::Button("Reset")) {                          // Buttons return true when clicked (most widgets return true when edited/activated)
-                    counter++;
+                    x.Position = glm::vec3(0, 0, 0);
+                    x.Velocity = glm::vec3(30, 30, 0);
                     x.Orientation = glm::vec4(0, 0, 0, 1);
+                    x.BodyRate = glm::vec3(0, 0, 0);
                 }
-                ImGui::SameLine();
-                ImGui::Text("counter = %d", counter);
+                //ImGui::SameLine();
+                //ImGui::Text("counter = %d", counter);
 
-                /* PlotLines(
-                    const char* label, const float* values, int values_count, int values_offset = 0, 
-                    const char* overlay_text = NULL, float scale_min = FLT_MAX, float scale_max = FLT_MAX, 
-                    ImVec2 graph_size = ImVec2(0, 0), 
-                    int stride = sizeof(float));
-                */
-                ImGui::Text("Quaternion");
-                ImGui::PlotLines(" ", logger_q1.samples, (int)logger_q1.m_size, logger_q1.loc, "Orientation:1", -1.0f, 1.0f, ImVec2(200, 50));
-                ImGui::PlotLines(" ", logger_q2.samples, (int)logger_q2.m_size, logger_q2.loc, "Orientation:2", -1.0f, 1.0f, ImVec2(200, 50));
-                ImGui::PlotLines(" ", logger_q3.samples, (int)logger_q3.m_size, logger_q3.loc, "Orientation:3", -1.0f, 1.0f, ImVec2(200, 50));
-                ImGui::PlotLines(" ", logger_q4.samples, (int)logger_q4.m_size, logger_q4.loc, "Orientation:4", -1.0f, 1.0f, ImVec2(200, 50));
-                ImGui::Text("Euler");
-                ImGui::PlotLines(" ", logger_yaw.samples, (int)logger_yaw.m_size, logger_yaw.loc, "Yaw", -180.0f, 180.0f, ImVec2(200, 50));
-                ImGui::PlotLines(" ", logger_pitch.samples, (int)logger_pitch.m_size, logger_pitch.loc, "Pitch", -180.0f, 180.0f, ImVec2(200, 50));
-                ImGui::PlotLines(" ", logger_roll.samples, (int)logger_roll.m_size, logger_roll.loc, "Roll", -180.0f, 180.0f, ImVec2(200, 50));
+                logger_x.AddSample(x.Position.x);
+                logger_y.AddSample(x.Position.y);
+
+                if (ImPlot::BeginPlot("My Plot")) {
+                    ImPlot::PlotLine("Trajectory", logger_x.samples, logger_y.samples, logger_x.m_size, 0, logger_x.loc);
+                    ImPlot::PlotScatter("Trajectory", logger_x.samples, logger_y.samples, logger_x.m_size, 0, logger_x.loc);
+                    ImPlot::EndPlot();
+                }
+
+                //ImPlot::ShowDemoWindow();
+                //ImGui::Text("Quaternion");
+                //ImGui::PlotLines(" ", logger_q1.samples, (int)logger_q1.m_size, logger_q1.loc, "Orientation:1", -1.0f, 1.0f, ImVec2(200, 50));
+                //ImGui::PlotLines(" ", logger_q2.samples, (int)logger_q2.m_size, logger_q2.loc, "Orientation:2", -1.0f, 1.0f, ImVec2(200, 50));
+                //ImGui::PlotLines(" ", logger_q3.samples, (int)logger_q3.m_size, logger_q3.loc, "Orientation:3", -1.0f, 1.0f, ImVec2(200, 50));
+                //ImGui::PlotLines(" ", logger_q4.samples, (int)logger_q4.m_size, logger_q4.loc, "Orientation:4", -1.0f, 1.0f, ImVec2(200, 50));
+                //ImGui::Text("Euler");
+                //ImGui::PlotLines(" ", logger_yaw.samples, (int)logger_yaw.m_size, logger_yaw.loc, "Yaw", -180.0f, 180.0f, ImVec2(200, 50));
+                //ImGui::PlotLines(" ", logger_pitch.samples, (int)logger_pitch.m_size, logger_pitch.loc, "Pitch", -180.0f, 180.0f, ImVec2(200, 50));
+                //ImGui::PlotLines(" ", logger_roll.samples, (int)logger_roll.m_size, logger_roll.loc, "Roll", -180.0f, 180.0f, ImVec2(200, 50));
 
                 ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
                 ImGui::End();
@@ -205,9 +190,13 @@ namespace aimpoint {
             ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
             window->SwapBuffers();
+            x = Integrate_RK4(rigid_body, x, m_clock);
             m_clock.Advance();
             window->ProcessEvents();
         }
+
+        ImPlot::DestroyContext();
+        ImGui::DestroyContext();
 
         LOG_INFO("Shutting Down...");
 	}

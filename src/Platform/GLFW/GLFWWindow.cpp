@@ -70,7 +70,6 @@ namespace aimpoint {
             data.EventCallback(event);
             });
 
-
         glfwSetWindowCloseCallback(m_glfwWindow, [](GLFWwindow* window) {
             WindowData& data = *(WindowData*)glfwGetWindowUserPointer(window);
 

@@ -11,3 +11,6 @@
 [submodule "deps/spdlog"]
 	path = deps/spdlog
 	url = https://github.com/gabime/spdlog.git
+[submodule "deps/implot/implot"]
+	path = deps/implot/implot
+	url = https://github.com/epezent/implot.git

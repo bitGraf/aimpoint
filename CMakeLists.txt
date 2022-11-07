@@ -10,8 +10,9 @@ set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 add_subdirectory( "deps/GLFW" )
 
-# imgui
+# imgui/implot
 add_subdirectory("deps/imgui")
+add_subdirectory("deps/implot")
 
 # glad
 add_subdirectory("deps/glad")
@@ -90,7 +91,7 @@ source_group("Core"     FILES ${aimpoint-CORE-SRC} )
 source_group("Renderer" FILES ${aimpoint-RENDERER-SRC} )
 source_group("OpenGL"   FILES ${aimpoint-OPENGL-SRC} )
 
-target_link_libraries( aimpoint ${OPENGL_LIBRARIES} glfw glad imgui glm spdlog::spdlog)
+target_link_libraries( aimpoint ${OPENGL_LIBRARIES} glfw glad imgui implot glm spdlog::spdlog)
 target_include_directories( aimpoint PRIVATE src/)
 target_precompile_headers(aimpoint PRIVATE 
     <string>

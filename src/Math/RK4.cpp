@@ -119,10 +119,6 @@ namespace aimpoint {
         x_new.Velocity = x.Velocity + (K1.Velocity + 2.0f*K2.Velocity + 2.0f*K3.Velocity + K4.Velocity)*h/6.0f;
         x_new.Orientation = x.Orientation + (K1.Orientation + 2.0f*K2.Orientation + 2.0f*K3.Orientation + K4.Orientation)*h/6.0f;
         x_new.BodyRate = x.BodyRate + (K1.BodyRate + 2.0f*K2.BodyRate + 2.0f*K3.BodyRate + K4.BodyRate)*h/6.0f;
-        //State6DoF x_new = x + (K1 + 2.0f*K2 + 2.0f*K3 + K4)*h/6.0f;
-
-        float mag = sqrt(x_new.Orientation.x*x_new.Orientation.x + x_new.Orientation.w*x_new.Orientation.w + x_new.Orientation.y*x_new.Orientation.y + x_new.Orientation.z*x_new.Orientation.z);
-        //x_new.Orientation = x_new.Orientation / mag;
 
         x_new.Orientation = glm::normalize(x_new.Orientation);
         
