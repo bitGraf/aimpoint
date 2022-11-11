@@ -66,8 +66,8 @@ namespace ab_solver {
 		for (int i = 0; i < n_bodies; ++i) {
 			int offset = i*m_state.NUM_STATE_VARS;
 			m_bodies[i]->pos_x = m_state.translational[offset+0];
-			m_bodies[i]->pos_x = m_state.translational[offset+1];
-			m_bodies[i]->pos_x = m_state.translational[offset+2];
+			m_bodies[i]->pos_y = m_state.translational[offset+1];
+			m_bodies[i]->pos_z = m_state.translational[offset+2];
 
 			m_bodies[i]->vel_x = m_state.translational[offset+3];
 			m_bodies[i]->vel_y = m_state.translational[offset+4];

@@ -23,44 +23,71 @@ namespace aimpoint {
         aimpoint::Log::Init();
         LOG_INFO("Hiyaa =^.^=");
 
-        // Simulations params
-
+        // Create simulation vars
         m_clock.Create(1/120.0, 0.0);
+        m_system.Initialize(&m_solver);
 
+        ab_solver::RigidBody* b1 = new ab_solver::RigidBody(); 
+        b1->pos_x = -5.0;
+        b1->vel_x = 5.0;
+        b1->vel_y = 5.0;
+        m_bodies.push_back(b1); m_system.AddRigidBody(b1);
+        ab_solver::RigidBody* b2 = new ab_solver::RigidBody(); 
+
+        m_bodies.push_back(b2); m_system.AddRigidBody(b2);
+        ab_solver::RigidBody* b3 = new ab_solver::RigidBody(); 
+
+        m_bodies.push_back(b3); m_system.AddRigidBody(b3);
+
+        // Create window and bind event callback fcn
         aimpoint::Window* window = aimpoint::Window::Create();
         window->SetEventCallback(BIND_EVENT_FN(Application::HandleEvent));
 
+        // TODO: get out of here
         // Setup Dear ImGui context
         IMGUI_CHECKVERSION();
         ImGui::CreateContext();
+        ImPlot::CreateContext();
+
         ImGuiIO& io = ImGui::GetIO(); (void)io;
         //io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
         io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
-
-        ImPlot::CreateContext();
-
-        // Setup Dear ImGui style
         ImGui::StyleColorsDark();
-        //ImGui::StyleColorsLight();
+        ImPlot::StyleColorsDark();
 
         // Setup Platform/Renderer backends
         ImGui_ImplGlfw_InitForOpenGL((GLFWwindow*)window->GetNativeWindow(), true);
         ImGui_ImplOpenGL3_Init("#version 460");
 
-        // Our state
-        bool show_demo_window = true;
-        bool show_another_window = false;
-        ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
-
         while (!m_done) {
-            //LOG_TRACE("t={:08.3f}x={:18.4f}v={:28.4f}", m_clock.GetTime(), x.x, x.y);
+            // Do simulation
+            m_system.Process(m_clock.GetTimestep(), 1);
 
+            // Do rendering
             window->GetRenderContext()->BeginFrame(); //TODO: temp workaround
 
             // Start the Dear ImGui frame
             ImGui_ImplOpenGL3_NewFrame();
             ImGui_ImplGlfw_NewFrame();
-            ImGui::NewFrame();    
+            ImGui::NewFrame();
+
+            // Print out rigid body states
+            if (ImGui::Begin("RigidBodySystem")) {
+                ImGui::Text("dT = %5.3fs [%6.2f Hz], T = %7.3fs", m_clock.GetTimestep(), 1.0/ m_clock.GetTimestep(), m_clock.GetTime());
+                ImGui::Separator();
+                for (int n = 0; n < m_system.GetRigidBodyCount(); n++) {
+                    auto body = m_system.GetRigidBody(n);
+                    ImGui::Text("Body: %02d", n);
+                    //ImGui::SameLine();
+                    ImGui::Text("    mass: %5.2f", body->mass);
+                    //ImGui::SameLine();
+                    ImGui::Text("    pos: <%5.2f,%5.2f,%5.2f>", body->pos_x, body->pos_y, body->pos_z);
+                    //ImGui::SameLine();
+                    ImGui::Text("    vel: <%5.2f,%5.2f,%5.2f>", body->vel_x, body->vel_y, body->vel_z);
+                    ImGui::Separator();
+                }
+            }
+            ImGui::End();
 
             // Rendering
             ImGui::Render();
@@ -82,6 +109,11 @@ namespace aimpoint {
 
         ImPlot::DestroyContext();
         ImGui::DestroyContext();
+
+        for (auto* body : m_bodies) {
+            delete body;
+        }
+        m_bodies.clear();
 
         LOG_INFO("Shutting Down...");
 	}
