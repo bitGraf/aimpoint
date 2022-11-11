@@ -61,10 +61,27 @@ endif()
 set(SRC_DIR "aimpoint")
 add_executable( aimpoint 
     ${SRC_DIR}/main.cpp
+    ${SRC_DIR}/Core/Application.cpp
+    ${SRC_DIR}/Core/Log.cpp
+    ${SRC_DIR}/Core/Timing/Clock.cpp
+    ${SRC_DIR}/Renderer/RendererContext.cpp
+    ${SRC_DIR}/Platform/GLFW/GLFWWindow.cpp
+    ${SRC_DIR}/Platform/OpenGL/OpenGLContext.cpp
+
+    ${SRC_DIR}/Core/Application.h
+    ${SRC_DIR}/Core/Core.h
+    ${SRC_DIR}/Core/Event.h
+    ${SRC_DIR}/Core/EventTypes.h
+    ${SRC_DIR}/Core/KeyCodes.h
+    ${SRC_DIR}/Core/Log.h
+    ${SRC_DIR}/Core/Window.h
+    ${SRC_DIR}/Renderer/RendererContext.h
+    ${SRC_DIR}/Platform/GLFW/GLFWWindow.h
+    ${SRC_DIR}/Platform/OpenGL/OpenGLContext.h
 )
 
 target_link_libraries( aimpoint ${OPENGL_LIBRARIES} "${SolverName}" imgui implot spdlog::spdlog)
-target_include_directories( aimpoint PRIVATE solver/include/)
+target_include_directories( aimpoint PRIVATE solver/include/ aimpoint/)
 target_precompile_headers(aimpoint PRIVATE 
     <string>
     <functional>
