@@ -36,10 +36,16 @@ set(solver_inc "solver/include/solver")
 add_library("${SolverName}" STATIC
     # Source files
     ${solver_src}/RigidBodySystem.cpp
+    ${solver_src}/SystemState.cpp
+    ${solver_src}/OdeSolver.cpp
+    ${solver_src}/RigidBody.cpp
     ${solver_src}/Utils.cpp
 
     # Header files
     ${solver_inc}/RigidBodySystem.h
+    ${solver_inc}/SystemState.h
+    ${solver_inc}/OdeSolver.h
+    ${solver_inc}/RigidBody.h
     ${solver_inc}/Utils.h
 )
 target_link_libraries("${SolverName}" glm)
