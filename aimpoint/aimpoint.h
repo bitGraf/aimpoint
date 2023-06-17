@@ -1,5 +1,7 @@
 #include "defines.h"
 
+#include "physics.h"
+
 struct aimpoint {
 public:
     int run();
@@ -8,15 +10,17 @@ public:
 
 private:
     int init();
-    void step(float dt);
-    void render();
+    void step(double dt);
+    void render(physics_world_state state);
     void shutdown();
 
     double simulation_rate;
-    double render_rate;
 
     double sim_time;
     double wall_time;
 
     int window_width, window_height;
+
+    physics_world world;
+    physics_world_state current_state;
 };

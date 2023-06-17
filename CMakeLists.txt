@@ -35,10 +35,12 @@ set(SRC_DIR "aimpoint")
 add_executable( aimpoint 
     ${SRC_DIR}/aimpoint.cpp
     ${SRC_DIR}/log.cpp
+    ${SRC_DIR}/physics.cpp
 
     ${SRC_DIR}/aimpoint.h
     ${SRC_DIR}/log.h
     ${SRC_DIR}/defines.h
+    ${SRC_DIR}/physics.h
 )
 
 target_link_libraries( aimpoint ${OPENGL_LIBRARIES} "${SolverName}" imgui implot spdlog::spdlog)

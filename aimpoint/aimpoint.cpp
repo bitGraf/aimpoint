@@ -19,44 +19,38 @@ int aimpoint::run() {
         return 1;
     }
 
+    sim_time = 0.0;
     const double step_time = 1.0 / simulation_rate;
-    const double render_time = 1.0 / render_rate;
-
-    double time_to_next_step = 0.0;
-    double time_to_next_render = 0.0;
-
-    int iteration = 0;
 
     wall_time = glfwGetTime();
+    double accum_time = 0.0;
+
+    physics_world_state previous_state;
 
     bool done = false;
-    while(!glfwWindowShouldClose(window)) {
-        glfwSwapBuffers(window);
+    while(!done) {
+        double new_time = glfwGetTime();
+        double frame_time = new_time - wall_time;
+        wall_time = new_time;
+
+        accum_time += frame_time;
+
         glfwPollEvents();
-
-        double time = glfwGetTime();
-
-        while (time_to_next_step <= 0.0) {
-            step(step_time);
-            time_to_next_step += step_time;
-        }
-
-        if (time_to_next_render <= 0.0) {
-            render();
-            time_to_next_render += render_time;
-            iteration++;
-        }
-
-        double wait_time = time_to_next_step < time_to_next_render ? time_to_next_step : time_to_next_render;
-        int64 wait_time_nano = static_cast<int64>(wait_time*1000000000);
-        //std::this_thread::sleep_for(std::chrono::nanoseconds(wait_time_nano));
-        //spdlog::trace("[{0:.3f}] Waiting {1:.3f} seconds", sim_time, wait_time);
-        time_to_next_step -= wait_time;
-        time_to_next_render -= wait_time;
-
-        if (iteration >= 3) {
+        if (glfwWindowShouldClose(window)) {
             done = true;
         }
+
+        while (accum_time >= step_time) {
+            previous_state = current_state;
+            step(step_time);
+            sim_time += step_time;
+            accum_time -= step_time;
+        }
+
+        double alpha = accum_time / step_time; // interpolation value [0,1]
+        physics_world_state state = world.interpolate_states(previous_state, current_state, alpha);
+        render(state);
+        glfwSwapBuffers(window);
     }
 
     shutdown();
@@ -65,8 +59,7 @@ int aimpoint::run() {
 }
 
 int aimpoint::init() {
-    simulation_rate = 100.0;
-    render_rate = 60.0;
+    simulation_rate = 100.0; // Hz
 
     sim_time = 0.0;
     wall_time = 0.0;
@@ -102,19 +95,23 @@ int aimpoint::init() {
     glfwGetFramebufferSize(window, &window_width, &window_height);
     glViewport(0, 0, window_width, window_height);
 
+    glfwSwapInterval(2);
+
     spdlog::info("Application intitialized");
     return 0;
 }
 
-void aimpoint::step(float dt) {
-    sim_time += dt;
+void aimpoint::step(double dt) {
     spdlog::trace("[{0:0.3f}] simulation step", sim_time);
+
+    world.integrate_states(&current_state, sim_time, dt);
 }
 
-void aimpoint::render() {
+void aimpoint::render(physics_world_state state) {
     glClearColor(0.2f, 0.4f, 0.1f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+    //spdlog::trace("[{0:0.3f}] ({1:0.3f}) render step", sim_time, alpha);
     spdlog::trace("[{0:0.3f}] render step", sim_time);
 }
 
