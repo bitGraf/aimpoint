@@ -8,3 +8,6 @@
 [submodule "deps/implot/implot"]
 	path = deps/implot/implot
 	url = https://github.com/epezent/implot.git
+[submodule "deps\\GLFW"]
+	path = deps\\GLFW
+	url = https://github.com/glfw/glfw.git
