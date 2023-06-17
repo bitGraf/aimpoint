@@ -11,3 +11,6 @@
 [submodule "deps\\GLFW"]
 	path = deps\\GLFW
 	url = https://github.com/glfw/glfw.git
+[submodule "deps\\math_lib"]
+	path = deps\\math_lib
+	url = https://github.com/bitGraf/math_lib.git

@@ -11,11 +11,12 @@ public:
 private:
     int init();
     void step(double dt);
-    void render(physics_world_state state);
+    void render(physics_world_render_state state);
     void shutdown();
 
     double simulation_rate;
 
+    double time_scale;
     double sim_time;
     double wall_time;
 

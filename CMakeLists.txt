@@ -25,6 +25,9 @@ add_subdirectory("deps/glad")
 # spdlog
 add_subdirectory("deps/spdlog")
 
+# math library
+add_subdirectory("deps/math_lib")
+
 
 ###### Application
 if( MSVC )
@@ -43,7 +46,7 @@ add_executable( aimpoint
     ${SRC_DIR}/physics.h
 )
 
-target_link_libraries( aimpoint ${OPENGL_LIBRARIES} "${SolverName}" imgui implot spdlog::spdlog)
+target_link_libraries( aimpoint ${OPENGL_LIBRARIES} "${SolverName}" imgui implot spdlog::spdlog laml)
 target_include_directories( aimpoint PRIVATE aimpoint)
 if( MSVC )
     if(${CMAKE_VERSION} VERSION_LESS "3.6.0") 
