@@ -38,6 +38,7 @@ add_executable( aimpoint
 
     ${SRC_DIR}/aimpoint.h
     ${SRC_DIR}/log.h
+    ${SRC_DIR}/defines.h
 )
 
 target_link_libraries( aimpoint ${OPENGL_LIBRARIES} "${SolverName}" imgui implot spdlog::spdlog)

@@ -1,16 +1,22 @@
 #include "defines.h"
 
 struct aimpoint {
-    void run();
+public:
+    int run();
+
+    void key_callback(int key, int scancode, int action, int mods);
 
 private:
-    void init();
+    int init();
     void step(float dt);
     void render();
     void shutdown();
 
-    float simulation_rate;
-    float render_rate;
+    double simulation_rate;
+    double render_rate;
 
-    float sim_time;
+    double sim_time;
+    double wall_time;
+
+    int window_width, window_height;
 };
