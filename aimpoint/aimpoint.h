@@ -1,6 +1,6 @@
 #include "defines.h"
 
-#include "physics.h"
+#include "rocket.h"
 
 struct aimpoint {
 public:
@@ -14,12 +14,15 @@ private:
     void render();
     void shutdown();
 
+    bool real_time;
+
     double simulation_rate;
+    uint64 sim_frame;
 
     double sim_time;
     double wall_time;
 
     int window_width, window_height;
 
-    simulation_body body;
+    rocket body;
 };

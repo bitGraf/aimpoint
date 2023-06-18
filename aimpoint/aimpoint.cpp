@@ -34,14 +34,22 @@ int aimpoint::run() {
         accum_time += frame_time;
 
         glfwPollEvents();
-        if (glfwWindowShouldClose(window) || sim_time >= 10.0) {
+        if (glfwWindowShouldClose(window) || sim_time >= 150.0) {
             done = true;
         }
 
-        while (accum_time >= step_time) {
-            step(step_time);
-            sim_time += step_time;
-            accum_time -= step_time;
+        if (real_time) {
+            while (accum_time >= step_time) {
+                step(step_time);
+                sim_time += step_time;
+                accum_time -= step_time;
+            }
+        } else {
+            double render_time = wall_time + 1.0/65.0;
+            while (glfwGetTime() < render_time) {
+                step(step_time);
+                sim_time += step_time;
+            }
         }
 
         double alpha = accum_time / step_time; // interpolation value [0,1]
@@ -55,17 +63,15 @@ int aimpoint::run() {
 }
 
 int aimpoint::init() {
-    simulation_rate = 1000; // Hz
+    simulation_rate = 1000.0; // Hz
+    sim_frame = 0;
+    real_time = false;
 
     sim_time = 0.0;
     wall_time = 0.0;
 
     window_width = 640;
     window_height = 480;
-
-    body.set_mass(1.0f);
-    body.set_state(laml::Vec3(1.0f, 0.0f, 0.0f), laml::Vec3(0.0f),
-                   laml::Quat(), laml::Vec3(0.0f));
 
     // setup glfw
     if (!glfwInit()) {
@@ -104,13 +110,14 @@ int aimpoint::init() {
 void aimpoint::step(double dt) {
     spdlog::trace("[{0:0.3f}] simulation step", sim_time);
 
-    double true_position = cos(sim_time);
-    double true_speed = -sin(sim_time);
-
-    spdlog::info("t = {0:4.1f} position = {1:7.3f}   velocity = {2:7.3f}  |  true_position = {3:7.3f}   true_velocity = {4:7.3f}", 
-                 sim_time, body.state.position.x, body.state.velocity.x,
-                 true_position, true_speed);
+    int64 cycles_per_second = (int64)simulation_rate;
+    if (sim_frame % (cycles_per_second) == 0) {
+        spdlog::info("t(s) = {0:4.1f}     alt(km) = {1:7.3f}     speed(m/s) = {2:7.3f}", 
+                     sim_time, laml::length(body.state.position)/1000.0, laml::length(body.state.velocity));
+    }
+    body.major_step(dt);
     body.integrate_states(sim_time, dt);
+    sim_frame++;
 }
 
 void aimpoint::render() {
@@ -161,7 +168,7 @@ void glfw_key_callback(GLFWwindow* window, int key, int scancode, int action, in
 int main(int argc, char** argv) {
     aimpoint app;
 
-    set_terminal_log_level(log_level::info);
+    set_terminal_log_level(log_level::debug);
     spdlog::info("Creating application...");
 
     app.run();

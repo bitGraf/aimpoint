@@ -59,6 +59,10 @@ struct simulation_body {
 
     void set_state(laml::Vec3 position, laml::Vec3 velocity, 
                    laml::Quat orientation, laml::Vec3 ang_velocity);
+
+    virtual void major_step(double dt);
+    virtual void minor_step(double dt);
+
     void apply_force(laml::Vec3 force, laml::Vec3 location);
 
     rigid_body_derivative calc_new_deriv(double t, double dt, const rigid_body_derivative* const with_deriv);

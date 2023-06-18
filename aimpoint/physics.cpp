@@ -79,6 +79,14 @@ void simulation_body::set_state(laml::Vec3 position, laml::Vec3 velocity,
     derivative.moment = laml::Vec3(0.0f, 0.0f, 0.0f);
 }
 
+void simulation_body::major_step(double dt) {
+
+}
+
+void simulation_body::minor_step(double dt) {
+
+}
+
 void simulation_body::apply_force(laml::Vec3 force, laml::Vec3 location) {
     net_force = net_force + force;
 
@@ -108,20 +116,20 @@ rigid_body_derivative simulation_body::calc_new_deriv(double t, double dt, const
         // recaulate new derivatives
         rigid_body_derivative new_deriv;
         new_deriv.velocity = new_state.velocity;
-        new_deriv.force = this->force_func(new_state, t);
+        new_deriv.force = net_force + this->force_func(new_state, t);
 
         new_deriv.spin = new_state.spin;
-        new_deriv.moment = this->moment_func(new_state, t);
+        new_deriv.moment = net_moment + this->moment_func(new_state, t);
 
         return new_deriv;
     } else {
         // recaulate new derivatives
         rigid_body_derivative new_deriv;
         new_deriv.velocity = state.velocity;
-        new_deriv.force = this->force_func(state, t);
+        new_deriv.force = net_force + this->force_func(state, t);
 
         new_deriv.spin = state.spin;
-        new_deriv.moment = this->moment_func(state, t);
+        new_deriv.moment = net_moment + this->moment_func(state, t);
 
         return new_deriv;
     }
@@ -143,6 +151,9 @@ void simulation_body::integrate_states(double t, double dt_d) {
 
             state.recalculate();
             memcpy(&derivative, &deriv_euler, sizeof(rigid_body_derivative));
+
+            net_force = laml::Vec3(0.0f);
+            net_moment = laml::Vec3(0.0f);
         } break;
         case 1: {
             // RK4
@@ -165,6 +176,8 @@ void simulation_body::integrate_states(double t, double dt_d) {
             state.recalculate();
             memcpy(&derivative, &deriv_rk4, sizeof(rigid_body_derivative));
 
+            net_force = laml::Vec3(0.0f);
+            net_moment = laml::Vec3(0.0f);
         } break;
     }
 }
