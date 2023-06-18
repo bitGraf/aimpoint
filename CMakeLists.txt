@@ -40,12 +40,13 @@ add_executable( aimpoint
     ${SRC_DIR}/log.cpp
     ${SRC_DIR}/physics.cpp
     ${SRC_DIR}/rocket.cpp
+    ${SRC_DIR}/mesh.cpp
 
     ${SRC_DIR}/aimpoint.h
     ${SRC_DIR}/log.h
     ${SRC_DIR}/defines.h
     ${SRC_DIR}/physics.h
-    ${SRC_DIR}/rocket.h
+    ${SRC_DIR}/mesh.h
 )
 
 target_link_libraries( aimpoint ${OPENGL_LIBRARIES} "${SolverName}" imgui implot spdlog::spdlog laml)

@@ -24,5 +24,8 @@ private:
 
     int window_width, window_height;
 
-    rocket body;
+    // openGL handles
+    uint32 shader, vao;
+
+    //rocket body;
 };
