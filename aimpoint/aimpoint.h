@@ -11,7 +11,7 @@ public:
 private:
     int init();
     void step(double dt);
-    void render(physics_world_render_state state);
+    void render();
     void shutdown();
 
     double simulation_rate;
@@ -21,6 +21,5 @@ private:
 
     int window_width, window_height;
 
-    physics_world world;
-    physics_world_state current_state;
+    simulation_body body;
 };

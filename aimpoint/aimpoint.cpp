@@ -25,8 +25,6 @@ int aimpoint::run() {
     wall_time = glfwGetTime();
     double accum_time = 0.0;
 
-    physics_world_state previous_state;
-
     bool done = false;
     while(!done) {
         double new_time = glfwGetTime();
@@ -41,15 +39,13 @@ int aimpoint::run() {
         }
 
         while (accum_time >= step_time) {
-            previous_state = current_state;
             step(step_time);
             sim_time += step_time;
             accum_time -= step_time;
         }
 
         double alpha = accum_time / step_time; // interpolation value [0,1]
-        physics_world_render_state render_state = world.interpolate_states(previous_state, current_state, alpha);
-        render(render_state);
+        render();
         glfwSwapBuffers(window);
     }
 
@@ -67,10 +63,9 @@ int aimpoint::init() {
     window_width = 640;
     window_height = 480;
 
-    current_state.num_objects = 1;
-    current_state.states[0].mass = 1.0f;
-    current_state.states[0].inv_mass = 1.0f;
-    current_state.states[0].position.x = 1.0f;
+    body.set_mass(1.0f);
+    body.set_state(laml::Vec3(1.0f, 0.0f, 0.0f), laml::Vec3(0.0f),
+                   laml::Quat(), laml::Vec3(0.0f));
 
     // setup glfw
     if (!glfwInit()) {
@@ -113,12 +108,12 @@ void aimpoint::step(double dt) {
     double true_speed = -sin(sim_time);
 
     spdlog::info("t = {0:4.1f} position = {1:7.3f}   velocity = {2:7.3f}  |  true_position = {3:7.3f}   true_velocity = {4:7.3f}", 
-                 sim_time, current_state.states[0].position.x, current_state.states[0].velocity.x,
+                 sim_time, body.state.position.x, body.state.velocity.x,
                  true_position, true_speed);
-    world.integrate_states(&current_state, sim_time, dt);
+    body.integrate_states(sim_time, dt);
 }
 
-void aimpoint::render(physics_world_render_state state) {
+void aimpoint::render() {
     glClearColor(0.2f, 0.4f, 0.1f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 

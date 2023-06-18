@@ -20,13 +20,14 @@ struct rigid_body_state {
     float mass;
     float inv_mass;
 
-    float inertia; // TODO: make these 3 principal interias
-    float inverseInertia;
+    laml::Vec3 inertia; // principal interias in body-frame
+    laml::Vec3 inv_inertia;
 
     void recalculate() {
         velocity = momentum * inv_mass;
 
-        ang_velocity = ang_momentum * inverseInertia;
+        laml::Vec3 _I_(inertia.z-inertia.y, inertia.x-inertia.z, inertia.y-inertia.x);
+        ang_velocity = ang_momentum * inv_inertia; // component-wise operator
         orientation = laml::normalize(orientation);
         laml::Quat q(ang_velocity.x, ang_velocity.y, ang_velocity.z, 0.0f);
         spin = 0.5f * laml::mul(q, orientation);
@@ -41,37 +42,32 @@ struct rigid_body_derivative {
     laml::Vec3 moment;
 };
 
-#define max_num_objects 32
-struct physics_world_state {
-    uint32 num_objects;
-
-    rigid_body_state states[max_num_objects];
-    rigid_body_derivative derivatives[max_num_objects];
-
-    physics_world_state() {
-        num_objects = 0;
-        memset(states, 0, sizeof(rigid_body_state)*max_num_objects);
-        memset(derivatives, 0, sizeof(rigid_body_derivative)*max_num_objects);
-    }
-};
-
 struct rigid_body_render_state {
     laml::Vec3 position;
     laml::Quat orientation;
 };
 
-struct physics_world_render_state {
-    uint32 num_objects;
+struct simulation_body {
+    rigid_body_state state;
+    rigid_body_derivative derivative;
 
-    rigid_body_render_state states[max_num_objects];
+    void set_mass(double mass);
+    void set_inv_mass(double inv_mass);
 
-    physics_world_render_state() {
-        num_objects = 0;
-        memset(states, 0, sizeof(rigid_body_render_state)*max_num_objects);
-    }
-};
+    void set_inertia(double I1, double I2, double I3);
+    void set_inv_inertia(double inv_I1, double inv_I2, double inv_I3);
 
-struct physics_world {
-    void integrate_states(physics_world_state* state, double t, double dt);
-    physics_world_render_state interpolate_states(physics_world_state previous, physics_world_state current, double f);
+    void set_state(laml::Vec3 position, laml::Vec3 velocity, 
+                   laml::Quat orientation, laml::Vec3 ang_velocity);
+    void apply_force(laml::Vec3 force, laml::Vec3 location);
+
+    rigid_body_derivative calc_new_deriv(double t, double dt, const rigid_body_derivative* const with_deriv);
+    void integrate_states(double t, double dt);
+
+    virtual laml::Vec3 force_func(const rigid_body_state& at_state, double t);
+    virtual laml::Vec3 moment_func(const rigid_body_state& at_state, double t);
+
+private:
+    laml::Vec3 net_force;
+    laml::Vec3 net_moment;
 };
