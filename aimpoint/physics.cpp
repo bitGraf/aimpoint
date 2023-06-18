@@ -20,7 +20,7 @@ rigid_body_derivative calc_new_deriv(const rigid_body_state* initial_state, doub
         // recaulate new derivatives
         rigid_body_derivative new_deriv;
         new_deriv.velocity = new_state.velocity;
-        new_deriv.force = laml::Vec3(10.0f, 0.0f, 0.0f); // TODO: how get this...
+        new_deriv.force = laml::Vec3(-initial_state->position.x, 0.0f, 0.0f); // TODO: how get this...
 
         new_deriv.spin = new_state.spin;
         new_deriv.moment = laml::Vec3(0.0f, 0.0f, 0.0f); // TODO: how get this...
@@ -30,7 +30,7 @@ rigid_body_derivative calc_new_deriv(const rigid_body_state* initial_state, doub
         // recaulate new derivatives
         rigid_body_derivative new_deriv;
         new_deriv.velocity = initial_state->velocity;
-        new_deriv.force = laml::Vec3(10.0f, 0.0f, 0.0f); // TODO: how get this...
+        new_deriv.force = laml::Vec3(-initial_state->position.x, 0.0f, 0.0f); // TODO: how get this...
 
         new_deriv.spin = initial_state->spin;
         new_deriv.moment = laml::Vec3(0.0f, 0.0f, 0.0f); // TODO: how get this...
@@ -66,7 +66,7 @@ void physics_world::integrate_states(physics_world_state* world, double t, doubl
                 rigid_body_derivative D = calc_new_deriv(state, t, dt, &C);
         
                 rigid_body_derivative deriv_rk4;
-                deriv_rk4.velocity = (1.0f / 6.0f)*(A.velocity + 2.0f*B.velocity + 2.0f*C.velocity + D.velocity);
+                deriv_rk4.velocity = (1.0f/6.0f)*(A.velocity + 2.0f*B.velocity + 2.0f*C.velocity + D.velocity);
                 deriv_rk4.force    = (1.0f/6.0f)*(A.force    + 2.0f*B.force    + 2.0f*C.force    + D.force);
                 deriv_rk4.spin   = (1.0f/6.0f)*(A.spin   + 2.0f*B.spin   + 2.0f*C.spin   + D.spin);
                 deriv_rk4.moment = (1.0f/6.0f)*(A.moment + 2.0f*B.moment + 2.0f*C.moment + D.moment);

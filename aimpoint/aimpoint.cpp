@@ -22,14 +22,14 @@ int aimpoint::run() {
     sim_time = 0.0;
     const double step_time = 1.0 / simulation_rate;
 
-    wall_time = time_scale*glfwGetTime();
+    wall_time = glfwGetTime();
     double accum_time = 0.0;
 
     physics_world_state previous_state;
 
     bool done = false;
     while(!done) {
-        double new_time = time_scale*glfwGetTime();
+        double new_time = glfwGetTime();
         double frame_time = new_time - wall_time;
         wall_time = new_time;
 
@@ -59,9 +59,8 @@ int aimpoint::run() {
 }
 
 int aimpoint::init() {
-    simulation_rate = 10; // Hz
+    simulation_rate = 1000; // Hz
 
-    time_scale = 5.0;
     sim_time = 0.0;
     wall_time = 0.0;
 
@@ -71,6 +70,7 @@ int aimpoint::init() {
     current_state.num_objects = 1;
     current_state.states[0].mass = 1.0f;
     current_state.states[0].inv_mass = 1.0f;
+    current_state.states[0].position.x = 1.0f;
 
     // setup glfw
     if (!glfwInit()) {
@@ -109,10 +109,10 @@ int aimpoint::init() {
 void aimpoint::step(double dt) {
     spdlog::trace("[{0:0.3f}] simulation step", sim_time);
 
-    double true_speed = 10.0*sim_time;
-    double true_position = 5.0*sim_time*sim_time;
+    double true_position = cos(sim_time);
+    double true_speed = -sin(sim_time);
 
-    spdlog::info("t = {0:4.1f} position = {1:7.3f}   velocity = {2:7.3f}  |  true_position = {1:7.3f}   true_velocity = {2:7.3f}", 
+    spdlog::info("t = {0:4.1f} position = {1:7.3f}   velocity = {2:7.3f}  |  true_position = {3:7.3f}   true_velocity = {4:7.3f}", 
                  sim_time, current_state.states[0].position.x, current_state.states[0].velocity.x,
                  true_position, true_speed);
     world.integrate_states(&current_state, sim_time, dt);

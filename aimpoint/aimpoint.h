@@ -16,7 +16,6 @@ private:
 
     double simulation_rate;
 
-    double time_scale;
     double sim_time;
     double wall_time;
 
