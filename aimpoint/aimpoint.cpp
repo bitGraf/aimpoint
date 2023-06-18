@@ -65,7 +65,7 @@ int aimpoint::run() {
 int aimpoint::init() {
     simulation_rate = 1000.0; // Hz
     sim_frame = 0;
-    real_time = false;
+    real_time = true;
 
     sim_time = 0.0;
     wall_time = 0.0;

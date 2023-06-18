@@ -26,10 +26,6 @@ void rocket::major_step(double dt) {
     tof += dt;
 }
 
-void rocket::minor_step(double dt) {
-
-}
-
 laml::Vec3 rocket::force_func(const rigid_body_state& at_state, double t) {
     return laml::Vec3(0.0f, -9.81f*state.mass, 0.0f);
 }
