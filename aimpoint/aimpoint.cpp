@@ -8,6 +8,8 @@
 #include <thread>
 #include <chrono>
 
+#include <stdio.h>
+
 // global vars for GLFW
 static GLFWwindow* window = nullptr;
 void glfw_error_callback(int error, const char* description);
@@ -73,7 +75,7 @@ int aimpoint::init() {
     window_width = 640;
     window_height = 480;
 
-    cam_pos = laml::Vec3(0.0f, 0.0f, 2.0f);
+    cam_pos = laml::Vec3(0.0f, 0.0f, 3.5f);
     yaw = 0;
     pitch = 0;
 
@@ -182,47 +184,112 @@ int aimpoint::init() {
     glDeleteShader(vertexShader);
     glDeleteShader(fragmentShader);  
 
+    // Load mesh from file
+    FILE* fid = fopen("../data/Cylinder.mesh", "rb");
+    if (fid == nullptr) {
+        // try one more directory up
+        fid = fopen("../../data/Cylinder.mesh", "rb");
 
+        if (fid == nullptr) {
+            spdlog::critical("Could not open mesh file!\n");
+            return 4;
+        }
+    }
+    fseek(fid, 4, SEEK_SET); // "MESH"
+    uint16 num_prims;
+    uint32 filesize, mesh_version, flag;
+    uint64 timestamp;
 
-    float vertices[] = {
-        -0.5f, -0.5f, -0.5f,   0.0f, 0.0f, -1.0f,
-         0.5f, -0.5f, -0.5f,   0.0f, 0.0f, -1.0f,
-         0.5f,  0.5f, -0.5f,   0.0f, 0.0f, -1.0f,
-        -0.5f,  0.5f, -0.5f,   0.0f, 0.0f, -1.0f,
+    fread(&filesize,     sizeof(uint32), 1, fid);
+    fread(&mesh_version, sizeof(uint32), 1, fid);
+    fread(&timestamp,    sizeof(uint64), 1, fid);
+    fread(&flag,         sizeof(uint32), 1, fid);
+    fread(&num_prims,    sizeof(uint16), 1, fid);
 
-         0.5f, -0.5f,  0.5f,   0.0f, 0.0f, 1.0f,
-        -0.5f, -0.5f,  0.5f,   0.0f, 0.0f, 1.0f,
-         0.5f,  0.5f,  0.5f,   0.0f, 0.0f, 1.0f,
-        -0.5f,  0.5f,  0.5f,   0.0f, 0.0f, 1.0f,
+    // skip material
+    fseek(fid, 48, SEEK_CUR);
+    uint8 len;
+    fread(&len, sizeof(uint8), 1, fid);
+    fseek(fid, len, SEEK_CUR);
 
-        -0.5f,  0.5f,  0.5f,  -1.0f, 0.0f, 0.0f,
-        -0.5f,  0.5f, -0.5f,  -1.0f, 0.0f, 0.0f,
-        -0.5f, -0.5f, -0.5f,  -1.0f, 0.0f, 0.0f,
-        -0.5f, -0.5f,  0.5f,  -1.0f, 0.0f, 0.0f,
+    // read first primitive
+    fseek(fid, 4, SEEK_CUR); // "PRIM"
+    uint32 num_verts, num_inds;
+    fread(&num_verts, sizeof(uint32), 1, fid);
+    fread(&num_inds,  sizeof(uint32), 1, fid);
+    fseek(fid, 4, SEEK_CUR); // mat_idx
 
-         0.5f,  0.5f,  0.5f,   1.0f, 0.0f, 0.0f,
-         0.5f,  0.5f, -0.5f,   1.0f, 0.0f, 0.0f,
-         0.5f, -0.5f, -0.5f,   1.0f, 0.0f, 0.0f,
-         0.5f, -0.5f,  0.5f,   1.0f, 0.0f, 0.0f,
+    uint32* indices = (uint32*)malloc(num_inds*sizeof(uint32));
+    fread(indices, sizeof(uint32), num_inds, fid);
 
-        -0.5f, -0.5f, -0.5f,   0.0f, -1.0f, 0.0f,
-         0.5f, -0.5f, -0.5f,   0.0f, -1.0f, 0.0f,
-         0.5f, -0.5f,  0.5f,   0.0f, -1.0f, 0.0f,
-        -0.5f, -0.5f,  0.5f,   0.0f, -1.0f, 0.0f,
-
-        -0.5f,  0.5f, -0.5f,   0.0f, 1.0f, 0.0f,
-         0.5f,  0.5f, -0.5f,   0.0f, 1.0f, 0.0f,
-         0.5f,  0.5f,  0.5f,   0.0f, 1.0f, 0.0f,
-        -0.5f,  0.5f,  0.5f,   0.0f, 1.0f, 0.0f,
+    struct vertex_file {
+        laml::Vec3 position;
+        laml::Vec3 normal;
+        laml::Vec3 tangent;
+        laml::Vec3 bitangent;
+        laml::Vec2 texcoord;
     };
-    unsigned int indices[] = {  // note that we start from 0!
-        0,  1,  2,  0,  2,  3,
-        4,  5,  6,  6,  5,  7,
-        9,  8, 10, 10,  8, 11,
-       12, 13, 14, 12, 14, 15,
-       17, 16, 18, 18, 16, 19,
-       20, 21, 22, 20, 22, 23,
-    };  
+    vertex_file* vertices_file = (vertex_file*)malloc(num_verts*sizeof(vertex_file));
+    fread(vertices_file, sizeof(vertex_file), num_verts, fid);
+
+    fclose(fid);
+
+    float* vertices = (float*)malloc(num_verts*6*sizeof(float));
+    for (int n = 0; n < num_verts; n++) {
+        vertices[n*6 + 0] = vertices_file[n].position.x;
+        vertices[n*6 + 1] = vertices_file[n].position.y;
+        vertices[n*6 + 2] = vertices_file[n].position.z;
+
+        vertices[n*6 + 3] = vertices_file[n].normal.x;
+        vertices[n*6 + 4] = vertices_file[n].normal.y;
+        vertices[n*6 + 5] = vertices_file[n].normal.z;
+    }
+    free(vertices_file);
+
+    spdlog::info("Cylinder.mesh loaded");
+    spdlog::info("FileSize: {0}", filesize);
+    spdlog::info("Verts: {0}", num_verts);
+    spdlog::info("Inds: {0}", num_inds);
+
+    //float vertices[] = {
+    //    -0.5f, -0.5f, -0.5f,   0.0f, 0.0f, -1.0f,
+    //     0.5f, -0.5f, -0.5f,   0.0f, 0.0f, -1.0f,
+    //     0.5f,  0.5f, -0.5f,   0.0f, 0.0f, -1.0f,
+    //    -0.5f,  0.5f, -0.5f,   0.0f, 0.0f, -1.0f,
+    //
+    //     0.5f, -0.5f,  0.5f,   0.0f, 0.0f, 1.0f,
+    //    -0.5f, -0.5f,  0.5f,   0.0f, 0.0f, 1.0f,
+    //     0.5f,  0.5f,  0.5f,   0.0f, 0.0f, 1.0f,
+    //    -0.5f,  0.5f,  0.5f,   0.0f, 0.0f, 1.0f,
+    //
+    //    -0.5f,  0.5f,  0.5f,  -1.0f, 0.0f, 0.0f,
+    //    -0.5f,  0.5f, -0.5f,  -1.0f, 0.0f, 0.0f,
+    //    -0.5f, -0.5f, -0.5f,  -1.0f, 0.0f, 0.0f,
+    //    -0.5f, -0.5f,  0.5f,  -1.0f, 0.0f, 0.0f,
+    //
+    //     0.5f,  0.5f,  0.5f,   1.0f, 0.0f, 0.0f,
+    //     0.5f,  0.5f, -0.5f,   1.0f, 0.0f, 0.0f,
+    //     0.5f, -0.5f, -0.5f,   1.0f, 0.0f, 0.0f,
+    //     0.5f, -0.5f,  0.5f,   1.0f, 0.0f, 0.0f,
+    //
+    //    -0.5f, -0.5f, -0.5f,   0.0f, -1.0f, 0.0f,
+    //     0.5f, -0.5f, -0.5f,   0.0f, -1.0f, 0.0f,
+    //     0.5f, -0.5f,  0.5f,   0.0f, -1.0f, 0.0f,
+    //    -0.5f, -0.5f,  0.5f,   0.0f, -1.0f, 0.0f,
+    //
+    //    -0.5f,  0.5f, -0.5f,   0.0f, 1.0f, 0.0f,
+    //     0.5f,  0.5f, -0.5f,   0.0f, 1.0f, 0.0f,
+    //     0.5f,  0.5f,  0.5f,   0.0f, 1.0f, 0.0f,
+    //    -0.5f,  0.5f,  0.5f,   0.0f, 1.0f, 0.0f,
+    //};
+    //unsigned int indices[] = {  // note that we start from 0!
+    //    0,  1,  2,  0,  2,  3,
+    //    4,  5,  6,  6,  5,  7,
+    //    9,  8, 10, 10,  8, 11,
+    //   12, 13, 14, 12, 14, 15,
+    //   17, 16, 18, 18, 16, 19,
+    //   20, 21, 22, 20, 22, 23,
+    //};  
 
     unsigned int VBO, VAO, EBO;
     glGenVertexArrays(1, &VAO);
@@ -232,10 +299,10 @@ int aimpoint::init() {
     glBindVertexArray(VAO);
 
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(float)*6*num_verts, vertices, GL_STATIC_DRAW);
 
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(uint32)*num_inds, indices, GL_STATIC_DRAW);
 
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
@@ -253,6 +320,8 @@ int aimpoint::init() {
     // VAOs requires a call to glBindVertexArray anyways so we generally don't unbind VAOs (nor VBOs) when it's not directly necessary.
     glBindVertexArray(0); 
 
+    free(indices);
+    free(vertices);
     vao = VAO;
 
     spdlog::info("Application intitialized");
@@ -296,6 +365,7 @@ void aimpoint::render() {
     laml::Mat4 projection_matrix;
     float AR = ((float)window_width / (float)window_height);
     laml::transform::create_projection_perspective(projection_matrix, 75.0f, AR, 0.1f, 100.0f);
+    //laml::transform::create_projection_orthographic(projection_matrix, -10.0f, 10.0f, -10.0f, 10.0f, -10.0f, 10.0f);
     int projLocation = glGetUniformLocation(shader, "r_Projection");
     glUseProgram(shader);
     glUniformMatrix4fv(projLocation, 1, GL_FALSE, projection_matrix._data);
@@ -308,7 +378,7 @@ void aimpoint::render() {
 
     glBindVertexArray(vao);
     //glDrawArrays(GL_TRIANGLES, 0, 6);
-     glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
+     glDrawElements(GL_TRIANGLES, 360, GL_UNSIGNED_INT, 0);
 
     //spdlog::trace("[{0:0.3f}] ({1:0.3f}) render step", sim_time, alpha);
     spdlog::trace("[{0:0.3f}] render step", sim_time);

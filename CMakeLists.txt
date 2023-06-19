@@ -9,6 +9,9 @@ set(AppName "aimpoint")
 # Overall project
 project( ${AppName} )
 
+# set output dir
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin)
+
 # GLFW
 set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
 set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
@@ -52,6 +55,10 @@ add_executable( aimpoint
 target_link_libraries( aimpoint ${OPENGL_LIBRARIES} "${SolverName}" imgui implot spdlog::spdlog laml)
 target_include_directories( aimpoint PRIVATE aimpoint)
 if( MSVC )
+    set_target_properties(
+        ${AppName} PROPERTIES
+        VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}/bin")
+
     if(${CMAKE_VERSION} VERSION_LESS "3.6.0") 
         message( "\n\t[ WARNING ]\n\n\tCMake version lower than 3.6.\n\n\t - Please update CMake and rerun; OR\n\t - Manually set 'aimpoint' as StartUp Project in Visual Studio.\n" )
     else()

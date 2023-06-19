@@ -7,11 +7,11 @@ rocket::rocket() {
     pitch = 90.0f;
 
     this->set_mass(550'000.0);
-    this->set_inertia(1.0, 1.0, 1.0);
+    this->set_inertia(1.0, 2.0, 3.0);
 
-    state.ang_momentum.x = 3.0f;
-    state.ang_momentum.y = 1.0f;
-    state.ang_momentum.z = 2.0f;
+    state.ang_momentum.x = 0.5f;
+    state.ang_momentum.y = 40.0f;
+    state.ang_momentum.z = 0.5f;
 
     state.recalculate();
 }
