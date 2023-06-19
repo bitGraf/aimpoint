@@ -8,6 +8,12 @@ rocket::rocket() {
 
     this->set_mass(550'000.0);
     this->set_inertia(1.0, 1.0, 1.0);
+
+    state.ang_momentum.x = 3.0f;
+    state.ang_momentum.y = 1.0f;
+    state.ang_momentum.z = 2.0f;
+
+    state.recalculate();
 }
 
 void rocket::major_step(double dt) {
