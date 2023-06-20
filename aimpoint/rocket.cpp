@@ -7,11 +7,11 @@ rocket::rocket() {
     pitch = 90.0f;
 
     this->set_mass(550'000.0);
-    this->set_inertia(1.0, 2.0, 3.0);
+    this->set_inertia(0.2, 0.3, 0.4);
 
-    state.ang_momentum.x = 0.5f;
-    state.ang_momentum.y = 40.0f;
-    state.ang_momentum.z = 0.5f;
+    state.ang_momentum.x = 0.1f;
+    state.ang_momentum.y = 5.0f;
+    state.ang_momentum.z = 0.1f;
 
     state.recalculate();
 }
@@ -33,7 +33,8 @@ void rocket::major_step(double dt) {
 }
 
 laml::Vec3 rocket::force_func(const rigid_body_state& at_state, double t) {
-    return laml::Vec3(0.0f, -9.81f*state.mass, 0.0f);
+    //return laml::Vec3(0.0f, -9.81f*state.mass, 0.0f);
+    return laml::Vec3(0.0f, 0.0f, 0.0f);
 }
 
 laml::Vec3 rocket::moment_func(const rigid_body_state& at_state, double t) {

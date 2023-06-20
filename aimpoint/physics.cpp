@@ -107,9 +107,8 @@ rigid_body_derivative simulation_body::calc_new_deriv(double t, double dt, const
 
         // euler eom
         new_state.orientation  = state.orientation  + with_deriv->spin*dt_f;
-        new_state.ang_momentum = state.ang_momentum + with_deriv->moment*dt_f; // TODO: this is wrong!
-                                                                               //       this is in a rotating reference frame
-                                                                               //       so that needs to be accounted for in the integral
+        laml::Vec3 M_rot = with_deriv->moment - laml::cross(state.ang_velocity, state.ang_momentum);
+        new_state.ang_momentum = state.ang_momentum + M_rot*dt_f;
 
         new_state.recalculate();
 
@@ -147,7 +146,8 @@ void simulation_body::integrate_states(double t, double dt_d) {
             state.position = state.position + deriv_euler.velocity*dt;
             state.momentum = state.momentum + deriv_euler.force*dt;
             state.orientation  = state.orientation  + deriv_euler.spin*dt;
-            state.ang_momentum = state.ang_momentum + deriv_euler.moment*dt;
+            laml::Vec3 M_rot = deriv_euler.moment - laml::cross(state.ang_velocity, state.ang_momentum);
+            state.ang_momentum = state.ang_momentum + M_rot*dt;
 
             state.recalculate();
             memcpy(&derivative, &deriv_euler, sizeof(rigid_body_derivative));
@@ -171,7 +171,8 @@ void simulation_body::integrate_states(double t, double dt_d) {
             state.position = state.position + deriv_rk4.velocity*dt;
             state.momentum = state.momentum + deriv_rk4.force*dt;
             state.orientation  = state.orientation  + deriv_rk4.spin*dt;
-            state.ang_momentum = state.ang_momentum + deriv_rk4.moment*dt;
+            laml::Vec3 M_rot = deriv_rk4.moment - laml::cross(state.ang_velocity, state.ang_momentum);
+            state.ang_momentum = state.ang_momentum + M_rot*dt;
 
             state.recalculate();
             memcpy(&derivative, &deriv_rk4, sizeof(rigid_body_derivative));
