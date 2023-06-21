@@ -13,7 +13,7 @@ rocket::rocket() {
     state.ang_velocity.y = 25.0f;
     state.ang_velocity.z = 0.5f;
 
-    state.recalculate();
+    calc_secondary_states();
 }
 
 void rocket::major_step(double dt) {
@@ -26,7 +26,7 @@ void rocket::major_step(double dt) {
         pitch -= pitch_rate*dt;
 
         apply_force(laml::Vec3(thrust*cos(pitch*laml::constants::deg2rad<double>), thrust*sin(pitch*laml::constants::deg2rad<double>), 0.0f), laml::Vec3(0.0f, 0.0f, 0.0f));
-        state.mass -= mdot*dt;
+        mass -= mdot*dt;
     }
 
     tof += dt;

@@ -335,7 +335,7 @@ void aimpoint::step(double dt) {
 
     int64 cycles_per_second = (int64)simulation_rate;
     if (sim_frame % (cycles_per_second) == 0) {
-        spdlog::debug("[{0:0.3f}] Rotational KE: {1:.2f} J", sim_time, body.state.rotational_KE);
+        spdlog::debug("[{0:0.3f}] Rotational KE: {1:.2f} J", sim_time, body.rotational_KE);
         //spdlog::info("t(s) = {0:4.1f}     alt(km) = {1:7.3f}     speed(m/s) = {2:7.3f}", 
         //             sim_time, laml::length(body.state.position)/1000.0, laml::length(body.state.velocity));
     }
