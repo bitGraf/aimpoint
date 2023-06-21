@@ -65,8 +65,8 @@ struct simulation_body {
 
     void apply_force(laml::Vec3 force, laml::Vec3 location);
 
-    rigid_body_derivative calc_new_deriv(double t, double dt, const rigid_body_derivative* const with_deriv);
-    void integrate_states(double t, double dt);
+    void integrate_states(double t, float dt);
+    rigid_body_derivative RK_stage(double t_n, rigid_body_state state_n, float dt, rigid_body_derivative* prev_stage);
 
     virtual laml::Vec3 force_func(const rigid_body_state& at_state, double t);
     virtual laml::Vec3 moment_func(const rigid_body_state& at_state, double t);
