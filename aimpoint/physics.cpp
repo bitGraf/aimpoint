@@ -137,7 +137,7 @@ rigid_body_derivative simulation_body::calc_new_deriv(double t, double dt, const
 void simulation_body::integrate_states(double t, double dt_d) {
     float dt = dt_d;
 
-    const uint8 integration_mode = 1;
+    const uint8 integration_mode = 0;
 
     switch(integration_mode) {
         case 0: {

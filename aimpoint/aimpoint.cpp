@@ -65,7 +65,7 @@ int aimpoint::run() {
 }
 
 int aimpoint::init() {
-    simulation_rate = 1000.0; // Hz
+    simulation_rate = 100000.0; // Hz
     sim_frame = 0;
     real_time = true;
 
@@ -324,6 +324,8 @@ int aimpoint::init() {
     free(vertices);
     vao = VAO;
 
+    init_recording();
+
     spdlog::info("Application intitialized");
     return 0;
 }
@@ -331,11 +333,13 @@ int aimpoint::init() {
 void aimpoint::step(double dt) {
     spdlog::trace("[{0:0.3f}] simulation step", sim_time);
 
-    //int64 cycles_per_second = (int64)simulation_rate;
-    //if (sim_frame % (cycles_per_second) == 0) {
-    //    spdlog::info("t(s) = {0:4.1f}     alt(km) = {1:7.3f}     speed(m/s) = {2:7.3f}", 
-    //                 sim_time, laml::length(body.state.position)/1000.0, laml::length(body.state.velocity));
-    //}
+    int64 cycles_per_second = (int64)simulation_rate;
+    if (sim_frame % (cycles_per_second) == 0) {
+        spdlog::debug("[{0:0.3f}] Rotational KE: {1:.2f} J", sim_time, body.state.rotational_KE);
+        //spdlog::info("t(s) = {0:4.1f}     alt(km) = {1:7.3f}     speed(m/s) = {2:7.3f}", 
+        //             sim_time, laml::length(body.state.position)/1000.0, laml::length(body.state.velocity));
+    }
+
     body.major_step(dt);
     body.integrate_states(sim_time, dt);
     
@@ -382,9 +386,36 @@ void aimpoint::render() {
 
     //spdlog::trace("[{0:0.3f}] ({1:0.3f}) render step", sim_time, alpha);
     spdlog::trace("[{0:0.3f}] render step", sim_time);
+
+    // RECORDING
+#if USE_DTV
+    atg_dtv::Frame *frame = encoder.newFrame(false);
+    if (frame) {
+        if (encoder.getError() != atg_dtv::Encoder::Error::None) {
+            spdlog::error("RTV Error!");
+        }
+
+        const int lineWidth = frame->m_lineWidth;
+        for (int y = 0; y < 480; ++y) {
+            uint8_t *row = &frame->m_rgb[y * lineWidth];
+            for (int x = 0; x < 640; ++x) {
+                const int index = x * 3;
+                row[index + 0] = (x + sim_frame) & 0xFF; // r
+                row[index + 1] = (y + sim_frame) & 0xFF; // g
+                row[index + 2] = 0 & 0xFF;   // b
+            }
+        }
+
+        encoder.submitFrame();
+    } else {
+        spdlog::info("RTV Done!");
+    }
+#endif
 }
 
 void aimpoint::shutdown() {
+    stop_recording();
+
     glfwDestroyWindow(window);
 
     glfwTerminate();
@@ -407,6 +438,43 @@ void glfw_error_callback(int error, const char* description) {
 void glfw_key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
     aimpoint* app = (aimpoint*)glfwGetWindowUserPointer(window);
     app->key_callback(key, scancode, action, mods);
+}
+
+
+bool aimpoint::init_recording() {
+#if USE_DTV
+    atg_dtv::Encoder::VideoSettings settings{};
+
+    // Output filename
+    settings.fname = "output.mp4";
+
+    // Input dimensions
+    settings.inputWidth = 640;
+    settings.inputHeight = 480;
+
+    // Output dimensions
+    settings.width = 640;
+    settings.height = 480;
+
+    // Encoder settings
+    settings.hardwareEncoding = true;
+    settings.bitRate = 16000000;
+
+    const int VideoLengthSeconds = 10;
+    const int FrameCount = VideoLengthSeconds * settings.frameRate;
+
+    encoder.run(settings, 2);
+#endif
+    return true;
+}
+
+bool aimpoint::stop_recording() {
+#if USE_DTV
+    encoder.commit();
+    encoder.stop();
+
+#endif
+    return true;
 }
 
 

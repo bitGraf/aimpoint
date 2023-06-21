@@ -16,6 +16,9 @@ struct rigid_body_state {
     laml::Quat spin; // q dot
     laml::Vec3 ang_velocity;
 
+    float linear_KE;
+    float rotational_KE;
+
     // constants
     float mass;
     float inv_mass;
@@ -31,6 +34,9 @@ struct rigid_body_state {
         orientation = laml::normalize(orientation);
         laml::Quat q(ang_velocity.x, ang_velocity.y, ang_velocity.z, 0.0f);
         spin = 0.5f * laml::mul(q, orientation);
+
+        linear_KE     = 0.5 * laml::dot(momentum, velocity);
+        rotational_KE = 0.5 * laml::dot(ang_momentum, ang_velocity);
     }
 };
 

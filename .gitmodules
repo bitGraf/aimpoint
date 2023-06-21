@@ -14,3 +14,6 @@
 [submodule "deps\\math_lib"]
 	path = deps\\math_lib
 	url = https://github.com/bitGraf/math_lib.git
+[submodule "deps\\DTV"]
+	path = deps\\DTV
+	url = https://github.com/ange-yaghi/direct-to-video.git
