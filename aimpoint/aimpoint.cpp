@@ -75,6 +75,11 @@ int aimpoint::init() {
     window_width = 640;
     window_height = 480;
 
+    //body.set_inertia(0.2, 0.3, 0.4);
+    //body.state.ang_velocity.x = 0.5f;
+    //body.state.ang_velocity.y = 25.0f;
+    //body.state.ang_velocity.z = 0.5f;
+
     cam_pos = laml::Vec3(0.0f, 0.0f, 3.5f);
     yaw = 0;
     pitch = 0;
@@ -335,7 +340,7 @@ void aimpoint::step(double dt) {
 
     int64 cycles_per_second = (int64)simulation_rate;
     if (sim_frame % (cycles_per_second) == 0) {
-        spdlog::debug("[{0:0.3f}] Rotational KE: {1:.2f} J", sim_time, body.rotational_KE);
+        //spdlog::debug("[{0:0.3f}] Rotational KE: {1:.2f} J", sim_time, body.rotational_KE);
         //spdlog::info("t(s) = {0:4.1f}     alt(km) = {1:7.3f}     speed(m/s) = {2:7.3f}", 
         //             sim_time, laml::length(body.state.position)/1000.0, laml::length(body.state.velocity));
     }
@@ -375,7 +380,9 @@ void aimpoint::render() {
     glUniformMatrix4fv(projLocation, 1, GL_FALSE, projection_matrix._data);
 
     laml::Mat4 transform_matrix;
-    laml::transform::create_transform_rotation(transform_matrix, body.state.orientation);
+    laml::Quat tmp;
+    //laml::transform::create_transform_rotation(transform_matrix, body.state.orientation);
+    laml::transform::create_transform_rotation(transform_matrix, tmp);
     int transformLocation = glGetUniformLocation(shader, "r_Transform");
     glUseProgram(shader);
     glUniformMatrix4fv(transformLocation, 1, GL_FALSE, transform_matrix._data);

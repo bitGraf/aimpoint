@@ -33,7 +33,7 @@ private:
     // openGL handles
     uint32 shader, vao;
 
-    rocket body;
+    simulation_body body;
 
     laml::Vec3 cam_pos;
     float yaw, pitch;

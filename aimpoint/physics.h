@@ -3,19 +3,19 @@
 #include <cstring>
 
 struct rigid_body_state {
-    laml::Vec3 position;
-    laml::Vec3 velocity;
+    laml::Vec3_highp position;
+    laml::Vec3_highp velocity;
 
-    laml::Quat orientation;
-    laml::Vec3 ang_velocity;
+    //laml::Quat orientation;
+    //laml::Vec3 ang_velocity;
 };
 
 struct rigid_body_derivative {
-    laml::Vec3 velocity;
-    laml::Vec3 acceleration;
+    laml::Vec3_highp velocity;
+    laml::Vec3_highp acceleration;
 
-    laml::Quat spin;
-    laml::Vec3 ang_acceleration;
+    //laml::Quat spin;
+    //laml::Vec3 ang_acceleration;
 };
 
 struct simulation_body {
@@ -25,41 +25,40 @@ struct simulation_body {
     void set_mass(double mass);
     void set_inv_mass(double inv_mass);
 
-    void set_inertia(double I1, double I2, double I3);
-    void set_inv_inertia(double inv_I1, double inv_I2, double inv_I3);
+    //void set_inertia(double I1, double I2, double I3);
+    //void set_inv_inertia(double inv_I1, double inv_I2, double inv_I3);
 
-    void set_state(laml::Vec3 position, laml::Vec3 velocity, 
-                   laml::Quat orientation, laml::Vec3 ang_velocity);
-    void calc_secondary_states();
+    void set_state(laml::Vec3_highp position, laml::Vec3_highp velocity, 
+                   laml::Quat_highp orientation, laml::Vec3_highp ang_velocity);
+    //void calc_secondary_states();
 
+    void calc_derivative(double t, const rigid_body_state* state);
     virtual void major_step(double dt);
-    virtual void minor_step(double dt);
+    virtual void minor_step(double dt, rigid_body_state* minor_state);
+    void integrate_states(double t, double dt);
 
-    void apply_force(laml::Vec3 force, laml::Vec3 location);
+    void apply_force(laml::Vec3_highp force, laml::Vec3_highp location);
 
-    void integrate_states(double t, float dt);
-    rigid_body_derivative RK_stage(double t_n, rigid_body_state state_n, float dt, rigid_body_derivative* prev_stage);
-
-    virtual laml::Vec3 force_func(const rigid_body_state& at_state, double t);
-    virtual laml::Vec3 moment_func(const rigid_body_state& at_state, double t);
+    virtual laml::Vec3_highp force_func(const rigid_body_state* at_state, double t);
+    //virtual laml::Vec3_highp moment_func(const rigid_body_state* at_state, double t);
 
 public:
     // secondary states
-    laml::Vec3 momentum;
-    laml::Quat spin; // q dot
-    laml::Vec3 ang_momentum;
+    laml::Vec3_highp momentum;
+    //laml::Quat_highp spin; // q dot
+    //laml::Vec3_highp ang_momentum;
 
-    float linear_KE;
-    float rotational_KE;
+    double linear_KE;
+    //double rotational_KE;
 
     // constants
-    float mass;
-    float inv_mass;
-    laml::Vec3 inertia; // principal interias in body-frame
-    laml::Vec3 inv_inertia;
+    double mass;
+    double inv_mass;
+    //laml::Vec3_highp inertia; // principal interias in body-frame
+    //laml::Vec3_highp inv_inertia;
 
 private:
     // step accumulation vars
-    laml::Vec3 net_force;
-    laml::Vec3 net_moment;
+    laml::Vec3_highp net_force;
+    //laml::Vec3_highp net_moment;
 };
