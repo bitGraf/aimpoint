@@ -9,9 +9,9 @@ rocket::rocket() {
     this->set_mass(550'000.0);
     this->set_inertia(0.2, 0.3, 0.4);
 
-    state.ang_momentum.x = 0.1f;
-    state.ang_momentum.y = 5.0f;
-    state.ang_momentum.z = 0.1f;
+    state.ang_velocity.x = 0.5f;
+    state.ang_velocity.y = 25.0f;
+    state.ang_velocity.z = 0.5f;
 
     state.recalculate();
 }

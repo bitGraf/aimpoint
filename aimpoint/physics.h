@@ -5,16 +5,15 @@
 struct rigid_body_state {
     // primary
     laml::Vec3 position;
-    laml::Vec3 momentum;
-
+    laml::Vec3 velocity;
     laml::Quat orientation;
-    laml::Vec3 ang_momentum;
+    laml::Vec3 ang_velocity;
 
     // secondary
-    laml::Vec3 velocity;
+    laml::Vec3 momentum;
 
     laml::Quat spin; // q dot
-    laml::Vec3 ang_velocity;
+    laml::Vec3 ang_momentum;
 
     float linear_KE;
     float rotational_KE;
@@ -27,11 +26,11 @@ struct rigid_body_state {
     laml::Vec3 inv_inertia;
 
     void recalculate() {
-        velocity = momentum * inv_mass;
+        momentum = velocity * mass;
+        ang_momentum = ang_velocity * inertia; // component-wise operator
 
-        laml::Vec3 _I_(inertia.z-inertia.y, inertia.x-inertia.z, inertia.y-inertia.x);
-        ang_velocity = ang_momentum * inv_inertia; // component-wise operator
         orientation = laml::normalize(orientation);
+
         laml::Quat q(ang_velocity.x, ang_velocity.y, ang_velocity.z, 0.0f);
         spin = 0.5f * laml::mul(q, orientation);
 
@@ -42,15 +41,10 @@ struct rigid_body_state {
 
 struct rigid_body_derivative {
     laml::Vec3 velocity;
-    laml::Vec3 force;
+    laml::Vec3 acceleration;
 
     laml::Quat spin;
-    laml::Vec3 moment;
-};
-
-struct rigid_body_render_state {
-    laml::Vec3 position;
-    laml::Quat orientation;
+    laml::Vec3 ang_acceleration;
 };
 
 struct simulation_body {

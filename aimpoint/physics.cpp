@@ -22,8 +22,8 @@ void simulation_body::set_inv_mass(double inv_mass) {
 
 void simulation_body::set_inertia(double I1, double I2, double I3) {
     state.inertia.x = I1;
-    state.inertia.x = I2;
-    state.inertia.x = I3;
+    state.inertia.y = I2;
+    state.inertia.z = I3;
 
     if (I1 == 0.0) {
         state.inv_inertia.x = 1.0e9;
@@ -43,8 +43,8 @@ void simulation_body::set_inertia(double I1, double I2, double I3) {
 }
 void simulation_body::set_inv_inertia(double inv_I1, double inv_I2, double inv_I3) {
     state.inv_inertia.x = inv_I1;
-    state.inv_inertia.x = inv_I2;
-    state.inv_inertia.x = inv_I3;
+    state.inv_inertia.y = inv_I2;
+    state.inv_inertia.z = inv_I3;
 
     if (inv_I1 == 0.0) {
         state.inertia.x = 1.0e9;
@@ -66,17 +66,17 @@ void simulation_body::set_inv_inertia(double inv_I1, double inv_I2, double inv_I
 void simulation_body::set_state(laml::Vec3 position, laml::Vec3 velocity, 
                                 laml::Quat orientation, laml::Vec3 ang_velocity) {
     state.position = position;
-    state.momentum = velocity * state.mass;
+    state.velocity = velocity;
     state.orientation = orientation;
-    state.ang_momentum = ang_velocity * state.inertia; // component-wise multiply
+    state.ang_velocity = ang_velocity;
 
     state.recalculate();
 
     derivative.velocity = state.velocity;
-    derivative.force = laml::Vec3(0.0f, 0.0f, 0.0f);
+    derivative.acceleration = laml::Vec3(0.0f, 0.0f, 0.0f);
 
     derivative.spin = state.spin;
-    derivative.moment = laml::Vec3(0.0f, 0.0f, 0.0f);
+    derivative.ang_acceleration = laml::Vec3(0.0f, 0.0f, 0.0f);
 }
 
 void simulation_body::major_step(double dt) {
@@ -103,32 +103,32 @@ rigid_body_derivative simulation_body::calc_new_deriv(double t, double dt, const
         rigid_body_state new_state;
         memcpy(&new_state, &state, sizeof(rigid_body_state));
         new_state.position = state.position + with_deriv->velocity*dt_f;
-        new_state.momentum = state.momentum + with_deriv->force*dt_f;
+        new_state.velocity = state.velocity + with_deriv->acceleration*dt_f;
 
         // euler eom
         new_state.orientation  = state.orientation  + with_deriv->spin*dt_f;
-        laml::Vec3 M_rot = with_deriv->moment - laml::cross(state.ang_velocity, state.ang_momentum);
-        new_state.ang_momentum = state.ang_momentum + M_rot*dt_f;
+        laml::Vec3 wd_rot = with_deriv->ang_acceleration - (state.inv_inertia*laml::cross(state.ang_velocity, state.ang_momentum));
+        new_state.ang_velocity = state.ang_velocity + wd_rot*dt_f;
 
         new_state.recalculate();
 
         // recaulate new derivatives
         rigid_body_derivative new_deriv;
         new_deriv.velocity = new_state.velocity;
-        new_deriv.force = net_force + this->force_func(new_state, t);
+        new_deriv.acceleration = (net_force + this->force_func(new_state, t))*state.inv_mass;
 
         new_deriv.spin = new_state.spin;
-        new_deriv.moment = net_moment + this->moment_func(new_state, t);
+        new_deriv.ang_acceleration = (net_moment + this->moment_func(new_state, t))*state.inv_inertia; // component-wise
 
         return new_deriv;
     } else {
         // recaulate new derivatives
         rigid_body_derivative new_deriv;
         new_deriv.velocity = state.velocity;
-        new_deriv.force = net_force + this->force_func(state, t);
+        new_deriv.acceleration = (net_force + this->force_func(state, t))*state.inv_mass;
 
         new_deriv.spin = state.spin;
-        new_deriv.moment = net_moment + this->moment_func(state, t);
+        new_deriv.ang_acceleration = (net_moment + this->moment_func(state, t))*state.inv_inertia;
 
         return new_deriv;
     }
@@ -144,10 +144,10 @@ void simulation_body::integrate_states(double t, double dt_d) {
             // explicit euler
             rigid_body_derivative deriv_euler = calc_new_deriv(t, dt, nullptr);
             state.position = state.position + deriv_euler.velocity*dt;
-            state.momentum = state.momentum + deriv_euler.force*dt;
+            state.velocity = state.velocity + deriv_euler.acceleration*dt;
             state.orientation  = state.orientation  + deriv_euler.spin*dt;
-            laml::Vec3 M_rot = deriv_euler.moment - laml::cross(state.ang_velocity, state.ang_momentum);
-            state.ang_momentum = state.ang_momentum + M_rot*dt;
+            laml::Vec3 wd_rot = deriv_euler.ang_acceleration - (state.inv_inertia*laml::cross(state.ang_velocity, state.ang_momentum));
+            state.ang_velocity = state.ang_velocity + wd_rot*dt;
 
             state.recalculate();
             memcpy(&derivative, &deriv_euler, sizeof(rigid_body_derivative));
@@ -164,15 +164,15 @@ void simulation_body::integrate_states(double t, double dt_d) {
     
             rigid_body_derivative deriv_rk4;
             deriv_rk4.velocity = (1.0f/6.0f)*(A.velocity + 2.0f*B.velocity + 2.0f*C.velocity + D.velocity);
-            deriv_rk4.force    = (1.0f/6.0f)*(A.force    + 2.0f*B.force    + 2.0f*C.force    + D.force);
+            deriv_rk4.acceleration    = (1.0f/6.0f)*(A.acceleration    + 2.0f*B.acceleration    + 2.0f*C.acceleration    + D.acceleration);
             deriv_rk4.spin   = (1.0f/6.0f)*(A.spin   + 2.0f*B.spin   + 2.0f*C.spin   + D.spin);
-            deriv_rk4.moment = (1.0f/6.0f)*(A.moment + 2.0f*B.moment + 2.0f*C.moment + D.moment);
+            deriv_rk4.ang_acceleration = (1.0f/6.0f)*(A.ang_acceleration + 2.0f*B.ang_acceleration + 2.0f*C.ang_acceleration + D.ang_acceleration);
 
             state.position = state.position + deriv_rk4.velocity*dt;
-            state.momentum = state.momentum + deriv_rk4.force*dt;
+            state.velocity = state.velocity + deriv_rk4.acceleration*dt;
             state.orientation  = state.orientation  + deriv_rk4.spin*dt;
-            laml::Vec3 M_rot = deriv_rk4.moment - laml::cross(state.ang_velocity, state.ang_momentum);
-            state.ang_momentum = state.ang_momentum + M_rot*dt;
+            laml::Vec3 wd_rot = deriv_rk4.ang_acceleration - (state.inv_inertia*laml::cross(state.ang_velocity, state.ang_velocity));
+            state.ang_velocity = state.ang_velocity + wd_rot*dt;
 
             state.recalculate();
             memcpy(&derivative, &deriv_rk4, sizeof(rigid_body_derivative));
@@ -180,6 +180,23 @@ void simulation_body::integrate_states(double t, double dt_d) {
             net_force = laml::Vec3(0.0f);
             net_moment = laml::Vec3(0.0f);
         } break;
+#if 0
+        case 2: {
+            // leap frog algorithm
+            rigid_body_derivative deriv_frog = calc_new_deriv(t, dt, nullptr);
+            state.position = state.position + deriv_frog.velocity*dt;
+            state.momentum = state.momentum + deriv_frog.force*dt;
+            state.orientation  = state.orientation  + deriv_frog.spin*dt;
+            laml::Vec3 M_rot = deriv_frog.moment - laml::cross(state.ang_velocity, state.ang_momentum);
+            state.ang_momentum = state.ang_momentum + M_rot*dt;
+
+            state.recalculate();
+            memcpy(&derivative, &deriv_frog, sizeof(rigid_body_derivative));
+
+            net_force = laml::Vec3(0.0f);
+            net_moment = laml::Vec3(0.0f);
+        } break;
+#endif
     }
 }
 
