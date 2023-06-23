@@ -36,7 +36,7 @@ int aimpoint::run() {
         accum_time += frame_time;
 
         glfwPollEvents();
-        if (glfwWindowShouldClose(window) || sim_time >= 150.0) {
+        if (glfwWindowShouldClose(window) ) {
             done = true;
         }
 
@@ -45,6 +45,11 @@ int aimpoint::run() {
                 step(step_time);
                 sim_time += step_time;
                 accum_time -= step_time;
+
+                if (sim_time >= 5.0) { 
+                    done = true;
+                    break; 
+                }
             }
         } else {
             double render_time = wall_time + 1.0/65.0;
@@ -65,7 +70,7 @@ int aimpoint::run() {
 }
 
 int aimpoint::init() {
-    simulation_rate = 10000.0; // Hz
+    simulation_rate = 200.0; // Hz
     sim_frame = 0;
     real_time = true;
 
@@ -75,10 +80,11 @@ int aimpoint::init() {
     window_width = 640;
     window_height = 480;
 
-    //body.set_inertia(0.2, 0.3, 0.4);
-    //body.state.ang_velocity.x = 0.5f;
-    //body.state.ang_velocity.y = 25.0f;
-    //body.state.ang_velocity.z = 0.5f;
+    body.spring_constant = 100.0;
+    body.damping_constant = 0.25;
+    body.set_mass(0.1);
+    body.state.position.x = 1.0;
+    body.state.velocity.x = 0.0;
 
     cam_pos = laml::Vec3(0.0f, 0.0f, 3.5f);
     yaw = 0;
@@ -332,20 +338,24 @@ int aimpoint::init() {
     init_recording();
 
     spdlog::info("Application intitialized");
+
+    body.major_step(sim_time, 0.0);
+
     return 0;
 }
 
 void aimpoint::step(double dt) {
-    spdlog::trace("[{0:0.3f}] simulation step", sim_time);
+    //spdlog::trace("[{0:0.3f}] simulation step", sim_time);
 
     int64 cycles_per_second = (int64)simulation_rate;
     if (sim_frame % (cycles_per_second) == 0) {
+        spdlog::debug("[{0:0.3f}] simulation step", sim_time);
         //spdlog::debug("[{0:0.3f}] Rotational KE: {1:.2f} J", sim_time, body.rotational_KE);
         //spdlog::info("t(s) = {0:4.1f}     alt(km) = {1:7.3f}     speed(m/s) = {2:7.3f}", 
         //             sim_time, laml::length(body.state.position)/1000.0, laml::length(body.state.velocity));
     }
 
-    body.major_step(dt);
+    //body.major_step(sim_time, dt);
     body.integrate_states(sim_time, dt);
     
     sim_frame++;
@@ -382,7 +392,9 @@ void aimpoint::render() {
     laml::Mat4 transform_matrix;
     laml::Quat tmp;
     //laml::transform::create_transform_rotation(transform_matrix, body.state.orientation);
-    laml::transform::create_transform_rotation(transform_matrix, tmp);
+    //laml::transform::create_transform_rotation(transform_matrix, tmp);
+    laml::Vec3 render_pos(body.state.position);
+    laml::transform::create_transform_translate(transform_matrix, render_pos);
     int transformLocation = glGetUniformLocation(shader, "r_Transform");
     glUseProgram(shader);
     glUniformMatrix4fv(transformLocation, 1, GL_FALSE, transform_matrix._data);
@@ -392,7 +404,7 @@ void aimpoint::render() {
      glDrawElements(GL_TRIANGLES, 360, GL_UNSIGNED_INT, 0);
 
     //spdlog::trace("[{0:0.3f}] ({1:0.3f}) render step", sim_time, alpha);
-    spdlog::trace("[{0:0.3f}] render step", sim_time);
+    //spdlog::trace("[{0:0.3f}] render step", sim_time);
 
     // RECORDING
 #if USE_DTV

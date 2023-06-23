@@ -32,9 +32,9 @@ struct simulation_body {
                    laml::Quat_highp orientation, laml::Vec3_highp ang_velocity);
     //void calc_secondary_states();
 
-    void calc_derivative(double t, const rigid_body_state* state);
-    virtual void major_step(double dt);
-    virtual void minor_step(double dt, rigid_body_state* minor_state);
+    rigid_body_derivative calc_derivative(double t, const rigid_body_state* state);
+    virtual void major_step(double t, double dt);
+    virtual void minor_step(double t, double dt, rigid_body_derivative* minor_derivative, rigid_body_state* minor_state);
     void integrate_states(double t, double dt);
 
     void apply_force(laml::Vec3_highp force, laml::Vec3_highp location);

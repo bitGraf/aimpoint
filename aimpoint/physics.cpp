@@ -1,5 +1,7 @@
 #include "physics.h"
 
+#include "log.h"
+
 void simulation_body::set_mass(double new_mass) {
 
     mass = new_mass;
@@ -92,27 +94,35 @@ void simulation_body::set_state(laml::Vec3_highp position, laml::Vec3_highp velo
 //    //rotational_KE = 0.5 * laml::dot(ang_momentum, state.ang_velocity);
 //}
 
-void simulation_body::calc_derivative(double t_n, const rigid_body_state* state_n) {
-    derivative.velocity = state_n->velocity;
-    derivative.acceleration = (net_force + force_func(state_n, t_n))*inv_mass;
+rigid_body_derivative simulation_body::calc_derivative(double t_n, const rigid_body_state* state_n) {
+    rigid_body_derivative deriv;
+    deriv.velocity = state_n->velocity;
+    deriv.acceleration = (net_force + force_func(state_n, t_n))*inv_mass;
 
     //laml::Quat q(state_n.ang_velocity.x, state_n.ang_velocity.y, state_n.ang_velocity.z, 0.0f);
     //laml::Quat new_spin = 0.5f * laml::mul(q, state_n.orientation);
     //derivative.spin = new_spin;
     //derivative.ang_acceleration = (net_moment + moment_func(state_n, t))*inv_inertia;
+
+    return deriv;
 }
 
-void simulation_body::major_step(double dt) {
-    // ...
+void simulation_body::major_step(double t, double dt) {
+    state.position = state.position + derivative.velocity*dt;
+    state.velocity = state.velocity + derivative.acceleration*dt;
 
     // reset
     net_force = laml::Vec3_highp(0.0);
     //net_moment = laml::Vec3_highp(0.0);
+
+    spdlog::trace("[{0:.5f}] major timestep  x={1:.5f}   v={2:.2f}   a={3:.2f}", t, state.position.x, state.velocity.x, ((net_force + force_func(&state, t))*inv_mass).x);
 }
 
-void simulation_body::minor_step(double dt, rigid_body_state* minor_state) {
-    state.position = state.position + derivative.velocity*dt;
-    state.velocity = state.velocity + derivative.acceleration*dt;
+void simulation_body::minor_step(double t, double dt, rigid_body_derivative* minor_derivative, rigid_body_state* minor_state) {
+    minor_state->position = minor_state->position + minor_derivative->velocity*dt;
+    minor_state->velocity = minor_state->velocity + minor_derivative->acceleration*dt;
+
+    //spdlog::trace("[{0:.5f}] minor timestep  x={1:.5f}   v={2:.2f}   a={3:.2f}", t, minor_state->position.x, minor_state->velocity.x, ((net_force + force_func(minor_state, t))*inv_mass).x);
 }
 
 void simulation_body::apply_force(laml::Vec3_highp force, laml::Vec3_highp location) {
@@ -129,22 +139,22 @@ void simulation_body::integrate_states(double t, double dt) {
         case 5: {
             rigid_body_state minor_state = state;
             // ode3 - Bogacki–Shampine method
-            calc_derivative(t, &minor_state); // f(t_n, x_n)
+            rigid_body_derivative K1 = calc_derivative(t, &minor_state); // K1 = f(t_n, y_n)
 
             // substep 1
-            minor_step(dt / 2.0, &minor_state);
-            calc_derivative(t + dt/2.0, &minor_state); // f(t_n
+            minor_state = state;
+            minor_step(t + dt/2.0, dt/2.0, &K1, &minor_state);
+            rigid_body_derivative K2 = calc_derivative(t + dt/2.0, &minor_state); // K2 = f(t_n + 1/2*dt, y_n + 1/2*dt*K1)
 
             // substep 2
-            minor_step(dt / 4.0, &minor_state);
-            calc_derivative(t + 3.0*dt/4.0, &minor_state); // K3
+            minor_state = state;
+            minor_step(t + 3*dt/4.0, 3.0*dt/4.0, &K2, &minor_state);
+            rigid_body_derivative K3 = calc_derivative(t + 3.0*dt/4.0, &minor_state); // K3 = f(t_n + 3/4*dt, y_n + 3/4*dt*K2)
 
             // substep 3
-            minor_step(dt / 4.0, &minor_state);
-            calc_derivative(t + dt, &minor_state); // K4
-
-            // substep 4
-            major_step(dt);
+            derivative.velocity     = 1.0 / 9.0 * (2.0*K1.velocity     + 3.0*K2.velocity     + 4.0*K3.velocity);
+            derivative.acceleration = 1.0 / 9.0 * (2.0*K1.acceleration + 3.0*K2.acceleration + 4.0*K3.acceleration);
+            major_step(t + dt, dt);
             //calc_secondary_states();
         } break;
     }

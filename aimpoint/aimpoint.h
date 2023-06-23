@@ -1,6 +1,6 @@
 #include "defines.h"
 
-#include "rocket.h"
+#include "mass_spring_damper.h"
 
 // for recording
 #define USE_DTV 0
@@ -33,7 +33,7 @@ private:
     // openGL handles
     uint32 shader, vao;
 
-    simulation_body body;
+    mass_spring_damper body;
 
     laml::Vec3 cam_pos;
     float yaw, pitch;
