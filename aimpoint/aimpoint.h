@@ -1,6 +1,7 @@
 #include "defines.h"
 
-#include "mass_spring_damper.h"
+#include "body_type/mass_spring_damper.h"
+#include "body_type/t_bar.h"
 
 // for recording
 #define USE_DTV 0
@@ -34,6 +35,7 @@ private:
     uint32 shader, vao;
 
     mass_spring_damper body;
+    t_bar body2;
 
     laml::Vec3 cam_pos;
     float yaw, pitch;

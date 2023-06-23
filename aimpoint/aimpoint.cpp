@@ -46,7 +46,7 @@ int aimpoint::run() {
                 sim_time += step_time;
                 accum_time -= step_time;
 
-                //if (sim_time >= .01) { 
+                //if (sim_time >= .05) { 
                 //    done = true;
                 //    break; 
                 //}
@@ -85,6 +85,12 @@ int aimpoint::init() {
     body.set_mass(0.1);
     body.state.position.x = 1.0;
     body.state.velocity.x = 0.0;
+
+    body2.set_mass(1.0);
+    body2.set_inertia(0.2, 0.3, 0.4);
+    body2.state.ang_velocity.x = 0.5;
+    body2.state.ang_velocity.y = 25.0;
+    body2.state.ang_velocity.z = 0.5;
 
     cam_pos = laml::Vec3(0.0f, 0.0f, 3.5f);
     yaw = 0;
@@ -339,7 +345,8 @@ int aimpoint::init() {
 
     spdlog::info("Application intitialized");
 
-    body.major_step(sim_time, 0.0);
+    //body.major_step(sim_time, 0.0);
+    body2.major_step(sim_time, 0.0);
 
     return 0;
 }
@@ -350,13 +357,15 @@ void aimpoint::step(double dt) {
     int64 cycles_per_second = (int64)simulation_rate;
     if (sim_frame % (cycles_per_second) == 0) {
         //spdlog::debug("[{0:0.3f}] simulation step", sim_time);
-        //spdlog::debug("[{0:0.3f}] Rotational KE: {1:.2f} J", sim_time, body.rotational_KE);
+        double rot_KE = 0.5 * laml::dot(body2.state.ang_velocity*body2.inertia, body2.state.ang_velocity);
+        spdlog::debug("[{0:0.3f}] Rotational KE: {1:.2f} J", sim_time, rot_KE);
         //spdlog::info("t(s) = {0:4.1f}     alt(km) = {1:7.3f}     speed(m/s) = {2:7.3f}", 
         //             sim_time, laml::length(body.state.position)/1000.0, laml::length(body.state.velocity));
     }
 
     //body.major_step(sim_time, dt);
-    body.integrate_states(sim_time, dt);
+    //body.integrate_states(sim_time, dt);
+    body2.integrate_states(sim_time, dt);
     
     sim_frame++;
 }
@@ -378,7 +387,6 @@ void aimpoint::render() {
     laml::transform::create_transform_translate(cam_transform, cam_pos);
     laml::transform::create_view_matrix_from_transform(view_matrix, cam_transform);
     int viewLocation = glGetUniformLocation(shader, "r_View");
-    glUseProgram(shader);
     glUniformMatrix4fv(viewLocation, 1, GL_FALSE, view_matrix._data);
 
     laml::Mat4 projection_matrix;
@@ -386,22 +394,22 @@ void aimpoint::render() {
     laml::transform::create_projection_perspective(projection_matrix, 75.0f, AR, 0.1f, 100.0f);
     //laml::transform::create_projection_orthographic(projection_matrix, -10.0f, 10.0f, -10.0f, 10.0f, -10.0f, 10.0f);
     int projLocation = glGetUniformLocation(shader, "r_Projection");
-    glUseProgram(shader);
     glUniformMatrix4fv(projLocation, 1, GL_FALSE, projection_matrix._data);
 
     laml::Mat4 transform_matrix;
-    laml::Quat tmp;
-    //laml::transform::create_transform_rotation(transform_matrix, body.state.orientation);
-    //laml::transform::create_transform_rotation(transform_matrix, tmp);
     laml::Vec3 render_pos(body.state.position);
     laml::transform::create_transform_translate(transform_matrix, render_pos);
     int transformLocation = glGetUniformLocation(shader, "r_Transform");
-    glUseProgram(shader);
     glUniformMatrix4fv(transformLocation, 1, GL_FALSE, transform_matrix._data);
 
     glBindVertexArray(vao);
     //glDrawArrays(GL_TRIANGLES, 0, 6);
-     glDrawElements(GL_TRIANGLES, 360, GL_UNSIGNED_INT, 0);
+    //glDrawElements(GL_TRIANGLES, 360, GL_UNSIGNED_INT, 0);
+
+    laml::Quat render_orientation(body2.state.orientation);
+    laml::transform::create_transform_rotation(transform_matrix, render_orientation);
+    glUniformMatrix4fv(transformLocation, 1, GL_FALSE, transform_matrix._data);
+    glDrawElements(GL_TRIANGLES, 360, GL_UNSIGNED_INT, 0);
 
     //spdlog::trace("[{0:0.3f}] ({1:0.3f}) render step", sim_time, alpha);
     //spdlog::trace("[{0:0.3f}] render step", sim_time);

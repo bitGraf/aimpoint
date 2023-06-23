@@ -22,63 +22,66 @@ void simulation_body::set_inv_mass(double new_inv_mass) {
     }
 }
 
-//void simulation_body::set_inertia(double I1, double I2, double I3) {
-//    inertia.x = I1;
-//    inertia.y = I2;
-//    inertia.z = I3;
-//
-//    if (I1 == 0.0) {
-//        inv_inertia.x = 1.0e9;
-//    } else {
-//        inv_inertia.x = 1.0/I1;
-//    }
-//    if (I2 == 0.0) {
-//        inv_inertia.y = 1.0e9;
-//    } else {
-//        inv_inertia.y = 1.0/I2;
-//    }
-//    if (I3 == 0.0) {
-//        inv_inertia.z = 1.0e9;
-//    } else {
-//        inv_inertia.z = 1.0/I3;
-//    }
-//}
-//void simulation_body::set_inv_inertia(double inv_I1, double inv_I2, double inv_I3) {
-//    inv_inertia.x = inv_I1;
-//    inv_inertia.y = inv_I2;
-//    inv_inertia.z = inv_I3;
-//
-//    if (inv_I1 == 0.0) {
-//        inertia.x = 1.0e9;
-//    } else {
-//        inertia.x = 1.0/inv_I1;
-//    }
-//    if (inv_I2 == 0.0) {
-//        inertia.y = 1.0e9;
-//    } else {
-//        inertia.y = 1.0/inv_I2;
-//    }
-//    if (inv_I3 == 0.0) {
-//        inertia.z = 1.0e9;
-//    } else {
-//        inertia.z = 1.0/inv_I3;
-//    }
-//}
+void simulation_body::set_inertia(double I1, double I2, double I3) {
+    inertia.x = I1;
+    inertia.y = I2;
+    inertia.z = I3;
+
+    if (I1 == 0.0) {
+        inv_inertia.x = 1.0e9;
+    } else {
+        inv_inertia.x = 1.0/I1;
+    }
+    if (I2 == 0.0) {
+        inv_inertia.y = 1.0e9;
+    } else {
+        inv_inertia.y = 1.0/I2;
+    }
+    if (I3 == 0.0) {
+        inv_inertia.z = 1.0e9;
+    } else {
+        inv_inertia.z = 1.0/I3;
+    }
+}
+void simulation_body::set_inv_inertia(double inv_I1, double inv_I2, double inv_I3) {
+    inv_inertia.x = inv_I1;
+    inv_inertia.y = inv_I2;
+    inv_inertia.z = inv_I3;
+
+    if (inv_I1 == 0.0) {
+        inertia.x = 1.0e9;
+    } else {
+        inertia.x = 1.0/inv_I1;
+    }
+    if (inv_I2 == 0.0) {
+        inertia.y = 1.0e9;
+    } else {
+        inertia.y = 1.0/inv_I2;
+    }
+    if (inv_I3 == 0.0) {
+        inertia.z = 1.0e9;
+    } else {
+        inertia.z = 1.0/inv_I3;
+    }
+}
+
+laml::Quat_highp calc_spin(laml::Vec3_highp ang_velocity, laml::Quat_highp orientation) {
+    laml::Quat_highp q(ang_velocity.x, ang_velocity.y, ang_velocity.z, 0.0);
+    return (0.5 * laml::mul(q, orientation));
+}
 
 void simulation_body::set_state(laml::Vec3_highp position, laml::Vec3_highp velocity, 
                                 laml::Quat_highp orientation, laml::Vec3_highp ang_velocity) {
     state.position = position;
     state.velocity = velocity;
-    //state.orientation = orientation;
-    //state.ang_velocity = ang_velocity;
-
-    //calc_secondary_states();
+    state.orientation = laml::normalize(orientation);
+    state.ang_velocity = ang_velocity;
 
     derivative.velocity = state.velocity;
     derivative.acceleration = laml::Vec3_highp(0.0, 0.0, 0.0);
 
-    //derivative.spin = spin; // from calc_secondary_states()
-    //derivative.ang_acceleration = laml::Vec3_highp(0.0f, 0.0f, 0.0f);
+    derivative.spin = calc_spin(state.ang_velocity, state.orientation);
+    derivative.ang_acceleration = laml::Vec3_highp(0.0, 0.0, 0.0);
 }
 
 //void simulation_body::calc_secondary_states() {
@@ -91,7 +94,7 @@ void simulation_body::set_state(laml::Vec3_highp position, laml::Vec3_highp velo
 //    //spin = 0.5f * laml::mul(q, state.orientation);
 //    
 //    linear_KE     = 0.5 * laml::dot(momentum, state.velocity);
-//    //rotational_KE = 0.5 * laml::dot(ang_momentum, state.ang_velocity);
+//    rotational_KE = 0.5 * laml::dot(ang_momentum, state.ang_velocity);
 //}
 
 rigid_body_derivative simulation_body::calc_derivative(double t_n, const rigid_body_state* state_n) {
@@ -99,24 +102,28 @@ rigid_body_derivative simulation_body::calc_derivative(double t_n, const rigid_b
     deriv.velocity = state_n->velocity;
     deriv.acceleration = (net_force + force_func(state_n, t_n))*inv_mass;
 
-    //laml::Quat q(state_n.ang_velocity.x, state_n.ang_velocity.y, state_n.ang_velocity.z, 0.0f);
-    //laml::Quat new_spin = 0.5f * laml::mul(q, state_n.orientation);
-    //derivative.spin = new_spin;
-    //derivative.ang_acceleration = (net_moment + moment_func(state_n, t))*inv_inertia;
+    deriv.spin = calc_spin(state_n->ang_velocity, state_n->orientation);
+    deriv.ang_acceleration = (net_moment + moment_func(state_n, t_n))*inv_inertia;
 
     return deriv;
 }
 
 void simulation_body::major_step(double t, double dt) {
     t = t + dt;
+
     state.position = state.position + derivative.velocity*dt;
     state.velocity = state.velocity + derivative.acceleration*dt;
 
-    // reset
-    net_force = laml::Vec3_highp(0.0);
-    //net_moment = laml::Vec3_highp(0.0);
+    state.orientation  = laml::normalize(state.orientation  + derivative.spin*dt);
+    laml::Vec3_highp acc_rot = derivative.ang_acceleration - inv_inertia*(laml::cross(state.ang_velocity, state.ang_velocity*inertia));
+    state.ang_velocity = state.ang_velocity + acc_rot*dt;
 
-    spdlog::trace("[{0:.5f}] major timestep  x={1:.5f}   v={2:.2f}   a={3:.2f}", t, state.position.x, state.velocity.x, ((net_force + force_func(&state, t))*inv_mass).x);
+    // reset
+    net_force  = laml::Vec3_highp(0.0);
+    net_moment = laml::Vec3_highp(0.0);
+
+    //spdlog::trace("[{0:.5f}] major timestep  x={1:.5f}   v={2:.2f}   a={3:.2f}", t, state.position.x, state.velocity.x, ((net_force + force_func(&state, t))*inv_mass).x);
+    //spdlog::trace("[{0:.5f}] major timestep  x={1:.2f}   y={2:.2f}   z={3:.2f}", t, state.ang_velocity.x, state.ang_velocity.y, state.ang_velocity.z);
 }
 
 void simulation_body::minor_step(double t, double dt, rigid_body_derivative* minor_derivative, rigid_body_state* minor_state) {
@@ -125,14 +132,20 @@ void simulation_body::minor_step(double t, double dt, rigid_body_derivative* min
     minor_state->position = minor_state->position + minor_derivative->velocity*dt;
     minor_state->velocity = minor_state->velocity + minor_derivative->acceleration*dt;
 
-    spdlog::trace("[{0:.5f}] minor timestep  x={1:.5f}   v={2:.2f}   a={3:.2f}", t, minor_state->position.x, minor_state->velocity.x, ((net_force + force_func(minor_state, t))*inv_mass).x);
+    minor_state->orientation  = laml::normalize(minor_state->orientation  + minor_derivative->spin*dt);
+    laml::Vec3_highp acc_rot = minor_derivative->ang_acceleration - inv_inertia*(laml::cross(minor_state->ang_velocity, minor_state->ang_velocity*inertia));
+    minor_state->ang_velocity = minor_state->ang_velocity + acc_rot*dt;
+
+    //spdlog::trace("[{0:.5f}] minor timestep  x={1:.5f}   v={2:.2f}   a={3:.2f}", t, minor_state->position.x, minor_state->velocity.x, ((net_force + force_func(minor_state, t))*inv_mass).x);
+    //spdlog::trace("[{0:.5f}] minor timestep  x={1:.2f}   y={2:.2f}   z={3:.2f}", t, state.ang_velocity.x, state.ang_velocity.y, state.ang_velocity.z);
+    //spdlog::trace("[{0:.5f}] minor timestep  x={1:.2f}   y={2:.2f}   z={3:.2f}", t, minor_state->ang_velocity.x, minor_state->ang_velocity.y, minor_state->ang_velocity.z);
 }
 
 void simulation_body::apply_force(laml::Vec3_highp force, laml::Vec3_highp location) {
-    net_force = net_force + force;
-
-    // TODO: calculate moment
+    // TODO: calculate moment and force correctly
     //       is location in body-frame or world-frame?
+    //net_force  = net_force  + force;
+    //net_moment = net_moment + laml::cross(location, force);
 }
 
 rigid_body_derivative combine_derivative_stages(double s1, const rigid_body_derivative& K1, 
@@ -141,6 +154,9 @@ rigid_body_derivative combine_derivative_stages(double s1, const rigid_body_deri
 
     res.velocity     = s1*K1.velocity     + s2*K2.velocity;
     res.acceleration = s1*K1.acceleration + s2*K2.acceleration;
+
+    res.spin             = s1*K1.spin             + s2*K2.spin;
+    res.ang_acceleration = s1*K1.ang_acceleration + s2*K2.ang_acceleration;
 
     return res;
 }
@@ -152,6 +168,9 @@ rigid_body_derivative combine_derivative_stages(double s1, const rigid_body_deri
     res.velocity     = s1*K1.velocity     + s2*K2.velocity     + s3*K3.velocity;
     res.acceleration = s1*K1.acceleration + s2*K2.acceleration + s3*K3.acceleration;
 
+    res.spin             = s1*K1.spin             + s2*K2.spin             + s3*K3.spin            ;
+    res.ang_acceleration = s1*K1.ang_acceleration + s2*K2.ang_acceleration + s3*K3.ang_acceleration;
+
     return res;
 }
 rigid_body_derivative combine_derivative_stages(double s1, const rigid_body_derivative& K1, 
@@ -162,6 +181,9 @@ rigid_body_derivative combine_derivative_stages(double s1, const rigid_body_deri
 
     res.velocity     = s1*K1.velocity     + s2*K2.velocity     + s3*K3.velocity     + s4*K4.velocity;
     res.acceleration = s1*K1.acceleration + s2*K2.acceleration + s3*K3.acceleration + s4*K4.acceleration;
+
+    res.spin             = s1*K1.spin             + s2*K2.spin             + s3*K3.spin             + s4*K4.spin            ;
+    res.ang_acceleration = s1*K1.ang_acceleration + s2*K2.ang_acceleration + s3*K3.ang_acceleration + s4*K4.ang_acceleration;
 
     return res;
 }
@@ -175,12 +197,15 @@ rigid_body_derivative combine_derivative_stages(double s1, const rigid_body_deri
     res.velocity     = s1*K1.velocity     + s2*K2.velocity     + s3*K3.velocity     + s4*K4.velocity     + s5*K5.velocity;
     res.acceleration = s1*K1.acceleration + s2*K2.acceleration + s3*K3.acceleration + s4*K4.acceleration + s5*K5.acceleration;
 
+    res.spin             = s1*K1.spin             + s2*K2.spin             + s3*K3.spin             + s4*K4.spin             + s5*K5.spin            ;
+    res.ang_acceleration = s1*K1.ang_acceleration + s2*K2.ang_acceleration + s3*K3.ang_acceleration + s4*K4.ang_acceleration + s5*K5.ang_acceleration;
+
     return res;
 }
 
 
 void simulation_body::integrate_states(double t, double dt) {
-    const int8 integration_mode = 4;
+    const int8 integration_mode = 5;
 
     switch(integration_mode) {
         case 1: { // ode1 - Euler Method
@@ -318,9 +343,9 @@ void simulation_body::integrate_states(double t, double dt) {
 }
 
 laml::Vec3_highp simulation_body::force_func(const rigid_body_state* at_state, double t) {
-    return laml::Vec3_highp(0.0f, 0.0f, 0.0f);
+    return laml::Vec3_highp(0.0, 0.0, 0.0);
 }
 
-//laml::Vec3_highp simulation_body::moment_func(const rigid_body_state& at_state, double t) {
-//    return laml::Vec3_highp(0.0f, 0.0f, 0.0f);
-//}
+laml::Vec3_highp simulation_body::moment_func(const rigid_body_state* at_state, double t) {
+    return laml::Vec3_highp(0.0, 0.0, 0.0);
+}

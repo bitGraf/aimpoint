@@ -48,16 +48,19 @@ add_executable( aimpoint
     ${SRC_DIR}/aimpoint.cpp
     ${SRC_DIR}/log.cpp
     ${SRC_DIR}/physics.cpp
-    ${SRC_DIR}/rocket.cpp
     ${SRC_DIR}/mesh.cpp
-    ${SRC_DIR}/mass_spring_damper.cpp
+    ${SRC_DIR}/body_type/t_bar.cpp
+    ${SRC_DIR}/body_type/rocket.cpp
+    ${SRC_DIR}/body_type/mass_spring_damper.cpp
 
     ${SRC_DIR}/aimpoint.h
     ${SRC_DIR}/log.h
     ${SRC_DIR}/defines.h
     ${SRC_DIR}/physics.h
     ${SRC_DIR}/mesh.h
-    ${SRC_DIR}/mass_spring_damper.h
+    ${SRC_DIR}/body_type/t_bar.h
+    ${SRC_DIR}/body_type/rocket.h
+    ${SRC_DIR}/body_type/mass_spring_damper.h
 )
 
 if(USE_DTV)
