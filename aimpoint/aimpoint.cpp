@@ -46,10 +46,10 @@ int aimpoint::run() {
                 sim_time += step_time;
                 accum_time -= step_time;
 
-                if (sim_time >= 5.0) { 
-                    done = true;
-                    break; 
-                }
+                //if (sim_time >= .01) { 
+                //    done = true;
+                //    break; 
+                //}
             }
         } else {
             double render_time = wall_time + 1.0/65.0;
@@ -349,7 +349,7 @@ void aimpoint::step(double dt) {
 
     int64 cycles_per_second = (int64)simulation_rate;
     if (sim_frame % (cycles_per_second) == 0) {
-        spdlog::debug("[{0:0.3f}] simulation step", sim_time);
+        //spdlog::debug("[{0:0.3f}] simulation step", sim_time);
         //spdlog::debug("[{0:0.3f}] Rotational KE: {1:.2f} J", sim_time, body.rotational_KE);
         //spdlog::info("t(s) = {0:4.1f}     alt(km) = {1:7.3f}     speed(m/s) = {2:7.3f}", 
         //             sim_time, laml::length(body.state.position)/1000.0, laml::length(body.state.velocity));
@@ -511,7 +511,7 @@ bool aimpoint::stop_recording() {
 int main(int argc, char** argv) {
     aimpoint app;
 
-    set_terminal_log_level(log_level::debug);
+    set_terminal_log_level(log_level::trace);
     spdlog::info("Creating application...");
 
     app.run();

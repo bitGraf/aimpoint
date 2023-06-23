@@ -108,6 +108,7 @@ rigid_body_derivative simulation_body::calc_derivative(double t_n, const rigid_b
 }
 
 void simulation_body::major_step(double t, double dt) {
+    t = t + dt;
     state.position = state.position + derivative.velocity*dt;
     state.velocity = state.velocity + derivative.acceleration*dt;
 
@@ -119,10 +120,12 @@ void simulation_body::major_step(double t, double dt) {
 }
 
 void simulation_body::minor_step(double t, double dt, rigid_body_derivative* minor_derivative, rigid_body_state* minor_state) {
+    t = t + dt;
+
     minor_state->position = minor_state->position + minor_derivative->velocity*dt;
     minor_state->velocity = minor_state->velocity + minor_derivative->acceleration*dt;
 
-    //spdlog::trace("[{0:.5f}] minor timestep  x={1:.5f}   v={2:.2f}   a={3:.2f}", t, minor_state->position.x, minor_state->velocity.x, ((net_force + force_func(minor_state, t))*inv_mass).x);
+    spdlog::trace("[{0:.5f}] minor timestep  x={1:.5f}   v={2:.2f}   a={3:.2f}", t, minor_state->position.x, minor_state->velocity.x, ((net_force + force_func(minor_state, t))*inv_mass).x);
 }
 
 void simulation_body::apply_force(laml::Vec3_highp force, laml::Vec3_highp location) {
@@ -132,30 +135,184 @@ void simulation_body::apply_force(laml::Vec3_highp force, laml::Vec3_highp locat
     //       is location in body-frame or world-frame?
 }
 
+rigid_body_derivative combine_derivative_stages(double s1, const rigid_body_derivative& K1, 
+                                                double s2, const rigid_body_derivative& K2) {
+    rigid_body_derivative res;
+
+    res.velocity     = s1*K1.velocity     + s2*K2.velocity;
+    res.acceleration = s1*K1.acceleration + s2*K2.acceleration;
+
+    return res;
+}
+rigid_body_derivative combine_derivative_stages(double s1, const rigid_body_derivative& K1, 
+                                                double s2, const rigid_body_derivative& K2,
+                                                double s3, const rigid_body_derivative& K3) {
+    rigid_body_derivative res;
+
+    res.velocity     = s1*K1.velocity     + s2*K2.velocity     + s3*K3.velocity;
+    res.acceleration = s1*K1.acceleration + s2*K2.acceleration + s3*K3.acceleration;
+
+    return res;
+}
+rigid_body_derivative combine_derivative_stages(double s1, const rigid_body_derivative& K1, 
+                                                double s2, const rigid_body_derivative& K2,
+                                                double s3, const rigid_body_derivative& K3,
+                                                double s4, const rigid_body_derivative& K4) {
+    rigid_body_derivative res;
+
+    res.velocity     = s1*K1.velocity     + s2*K2.velocity     + s3*K3.velocity     + s4*K4.velocity;
+    res.acceleration = s1*K1.acceleration + s2*K2.acceleration + s3*K3.acceleration + s4*K4.acceleration;
+
+    return res;
+}
+rigid_body_derivative combine_derivative_stages(double s1, const rigid_body_derivative& K1, 
+                                                double s2, const rigid_body_derivative& K2,
+                                                double s3, const rigid_body_derivative& K3,
+                                                double s4, const rigid_body_derivative& K4,
+                                                double s5, const rigid_body_derivative& K5) {
+    rigid_body_derivative res;
+
+    res.velocity     = s1*K1.velocity     + s2*K2.velocity     + s3*K3.velocity     + s4*K4.velocity     + s5*K5.velocity;
+    res.acceleration = s1*K1.acceleration + s2*K2.acceleration + s3*K3.acceleration + s4*K4.acceleration + s5*K5.acceleration;
+
+    return res;
+}
+
+
 void simulation_body::integrate_states(double t, double dt) {
-    const uint8 integration_mode = 5;
+    const int8 integration_mode = 4;
 
     switch(integration_mode) {
-        case 5: {
+        case 1: { // ode1 - Euler Method
+            derivative = calc_derivative(t, &state); // K1 = f(t_n, y_n)
+            major_step(t, dt);
+        } break;
+        case 2: { // ode2 - Heun Method
             rigid_body_state minor_state = state;
-            // ode3 - Bogacki–Shampine method
             rigid_body_derivative K1 = calc_derivative(t, &minor_state); // K1 = f(t_n, y_n)
 
             // substep 1
             minor_state = state;
-            minor_step(t + dt/2.0, dt/2.0, &K1, &minor_state);
+            minor_step(t, dt, &K1, &minor_state);
+            rigid_body_derivative K2 = calc_derivative(t + dt, &minor_state); // K2 = f(t_n + dt, y_n + dt*K1)
+
+            derivative = combine_derivative_stages(1.0/2.0, K1, 1.0/2.0, K2);
+            major_step(t, dt);
+        } break;
+        case -2: { // Ralston's Method
+            rigid_body_state minor_state = state;
+            rigid_body_derivative K1 = calc_derivative(t, &minor_state); // K1 = f(t_n, y_n)
+
+            // substep 1
+            minor_state = state;
+            minor_step(t, 2.0*dt/3.0, &K1, &minor_state);
+            rigid_body_derivative K2 = calc_derivative(t + 2.0*dt/3.0, &minor_state); // K2 = f(t_n + 2/3*dt, y_n + 2/3*dt*K1)
+
+            derivative = combine_derivative_stages(1.0/4.0, K1, 3.0/4.0, K2);
+            major_step(t, dt);
+        } break;
+        case 3: { // ode3 - Bogacki–Shampine method
+            rigid_body_state minor_state = state;
+            rigid_body_derivative K1 = calc_derivative(t, &minor_state); // K1 = f(t_n, y_n)
+
+            // substep 1
+            minor_state = state;
+            minor_step(t, dt/2.0, &K1, &minor_state);
             rigid_body_derivative K2 = calc_derivative(t + dt/2.0, &minor_state); // K2 = f(t_n + 1/2*dt, y_n + 1/2*dt*K1)
 
             // substep 2
             minor_state = state;
-            minor_step(t + 3*dt/4.0, 3.0*dt/4.0, &K2, &minor_state);
+            minor_step(t, 3.0*dt/4.0, &K2, &minor_state);
             rigid_body_derivative K3 = calc_derivative(t + 3.0*dt/4.0, &minor_state); // K3 = f(t_n + 3/4*dt, y_n + 3/4*dt*K2)
 
             // substep 3
-            derivative.velocity     = 1.0 / 9.0 * (2.0*K1.velocity     + 3.0*K2.velocity     + 4.0*K3.velocity);
-            derivative.acceleration = 1.0 / 9.0 * (2.0*K1.acceleration + 3.0*K2.acceleration + 4.0*K3.acceleration);
-            major_step(t + dt, dt);
-            //calc_secondary_states();
+            derivative = combine_derivative_stages(2.0/9.0, K1, 1.0/3.0, K2, 4.0/9.0, K3);
+            major_step(t, dt);
+        } break;
+        case 4: { // ode4 - Runge-Kutta
+            rigid_body_state minor_state = state;
+            rigid_body_derivative K1 = calc_derivative(t, &minor_state); // K1 = f(t_n, y_n)
+
+            // substep 1
+            minor_state = state;
+            minor_step(t, dt/2.0, &K1, &minor_state);
+            rigid_body_derivative K2 = calc_derivative(t + dt/2.0, &minor_state); // K2 = f(t_n + 1/2*dt, y_n + 1/2*dt*K1)
+
+            // substep 2
+            minor_state = state;
+            minor_step(t, dt/2.0, &K2, &minor_state);
+            rigid_body_derivative K3 = calc_derivative(t + dt/2.0, &minor_state); // K3 = f(t_n + 1/2*dt, y_n + 1/2*dt*K2)
+
+            // substep 3
+            minor_state = state;
+            minor_step(t, dt, &K3, &minor_state);
+            rigid_body_derivative K4 = calc_derivative(t + dt, &minor_state); // K4 = f(t_n + dt, y_n + dt*K3)
+
+            // substep 4
+            derivative = combine_derivative_stages(1.0/6.0, K1, 1.0/3.0, K2, 1.0/3.0, K3, 1.0/6.0, K4);
+            major_step(t, dt);
+        } break;
+        case -4: { // Alt Runge-Kutta - "3/8 rule"
+            rigid_body_state minor_state = state;
+            rigid_body_derivative K1 = calc_derivative(t, &minor_state); // K1 = f(t_n, y_n)
+
+            // substep 1
+            minor_state = state;
+            minor_step(t, dt/3.0, &K1, &minor_state);
+            rigid_body_derivative K2 = calc_derivative(t + dt/3.0, &minor_state); // K2 = f(t_n + 1/3*dt, y_n + 1/3*dt*K1)
+
+            // substep 2
+            minor_state = state;
+            rigid_body_derivative K_12 = combine_derivative_stages(1.5, K2, -0.5, K1);
+            minor_step(t, 2.0*dt/3.0, &K_12, &minor_state);
+            rigid_body_derivative K3 = calc_derivative(t + dt/2.0, &minor_state); // K3 = f(t_n + 2/3*dt, y_n + dt(-1/3*K1 + K2))
+
+            // substep 3
+            minor_state = state;
+            rigid_body_derivative K_123 = combine_derivative_stages(1.0, K1, -1.0, K2, 1.0, K3);
+            minor_step(t, dt, &K_123, &minor_state);
+            rigid_body_derivative K4 = calc_derivative(t + dt, &minor_state); // K4 = f(t_n + dt, y_n + dt(K1 - K2 + K3))
+
+            // substep 4
+            derivative = combine_derivative_stages(1.0/8.0, K1, 3.0/8.0, K2, 3.0/8.0, K3, 1.0/8.0, K4);
+            major_step(t, dt);
+        } break;
+        case 5: { // ode5 - Dormand-Prince
+            rigid_body_state minor_state = state;
+            rigid_body_derivative K1 = calc_derivative(t, &minor_state); // K1 = f(t_n, y_n)
+
+            // substep 1
+            minor_state = state;
+            minor_step(t, dt/5.0, &K1, &minor_state);
+            rigid_body_derivative K2 = calc_derivative(t + dt/5.0, &minor_state); // K2 = f(t_n + 1/5*dt, y_n + 1/5*dt*K1)
+
+            // substep 2
+            minor_state = state;
+            rigid_body_derivative K_12 = combine_derivative_stages(1.0/4.0, K1, 3.0/4.0, K2);
+            minor_step(t, 3.0*dt/10.0, &K_12, &minor_state);
+            rigid_body_derivative K3 = calc_derivative(t + 3*dt/10.0, &minor_state); // K3 = f(t_n + 3/10*dt, y_n + dt(3/40*K1 + 9/40*K2))
+
+            // substep 3
+            minor_state = state;
+            rigid_body_derivative K_123 = combine_derivative_stages(11.0/9.0, K1, -14.0/3.0, K2, 40.0/9.0, K3);
+            minor_step(t, 4.0*dt/5.0, &K_123, &minor_state);
+            rigid_body_derivative K4 = calc_derivative(t + 4.0*dt/5.0, &minor_state); // K4 = f(t_n + 4/5*dt, y_n + dt(44/45*K1 - 56/15*K2 + 32/9*K3))
+
+            // substep 4
+            minor_state = state;
+            rigid_body_derivative K_1234 = combine_derivative_stages(4843.0/1458.0, K1, -3170.0/243.0, K2, 8056.0/729.0, K3, -26.5/81.0, K4);
+            minor_step(t, 8.0*dt/9.0, &K_1234, &minor_state);
+            rigid_body_derivative K5 = calc_derivative(t + 8.0*dt/9.0, &minor_state); // K5 = f(t_n + 8/9*dt, y_n + dt(...))
+
+            // substep 5
+            minor_state = state;
+            rigid_body_derivative K_12345 = combine_derivative_stages(9017.0/3168.0, K1, -355.0/33.0, K2, 46732.0/5247.0, K3, 49.0/176.0, K4, -5103.0/18656.0, K5);
+            minor_step(t, dt, &K_12345, &minor_state);
+            rigid_body_derivative K6 = calc_derivative(t + dt, &minor_state); // K5 = f(t_n + dt, y_n + dt(...))
+
+            // substep 6
+            derivative = combine_derivative_stages(35.0/384.0, K1, 500.0/1113.0, K3, 125.0/192.0, K4, -2187.0/6784.0, K5, 11.0/84.0, K6);
+            major_step(t, dt);
         } break;
     }
 }
