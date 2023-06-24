@@ -91,8 +91,9 @@ int aimpoint::init() {
 
     spdlog::info("Application intitialized");
 
+    // TODO: do these really need to be initialized like this?
     //body.major_step(sim_time, 0.0);
-    body2.major_step(sim_time, 0.0);
+    body2.base_major_step(sim_time, 0.0);
 
     return 0;
 }

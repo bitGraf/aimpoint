@@ -11,7 +11,7 @@ rocket::rocket() {
     //calc_secondary_states();
 }
 
-void rocket::major_step(double t, double dt) {
+void rocket::base_major_step(double t, double dt) {
     if (tof < 150.0) {
         double thrust = 8'000'000.0;
         double isp = 300.0;
