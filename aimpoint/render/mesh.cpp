@@ -5,6 +5,13 @@
 #include "glad/gl.h"
 #include <stdio.h>
 
+triangle_mesh::~triangle_mesh() {
+    free(handles);
+    free(num_verts);
+    free(num_inds);
+    free(mat_idxs);
+}
+
 bool triangle_mesh::load_from_mesh_file(const char* filename) {
     FILE* fid = fopen(filename, "rb");
 
@@ -20,7 +27,6 @@ bool triangle_mesh::load_from_mesh_file(const char* filename) {
         //}
     }
     fseek(fid, 4, SEEK_SET); // "MESH"
-    uint16 num_prims;
     uint32 filesize, mesh_version;
     uint64 timestamp;
 
@@ -30,22 +36,59 @@ bool triangle_mesh::load_from_mesh_file(const char* filename) {
     fread(&flag,         sizeof(uint32), 1, fid);
     fread(&num_prims,    sizeof(uint16), 1, fid);
 
-    // skip material
-    fseek(fid, 48, SEEK_CUR);
-    uint8 len;
-    fread(&len, sizeof(uint8), 1, fid);
-    fseek(fid, len, SEEK_CUR);
+    spdlog::info("'{0}' loaded", filename);
+    spdlog::debug("FileSize: {0}", filesize);
+    spdlog::debug("{0} primitives", num_prims);
 
-    // read first primitive
-    fseek(fid, 4, SEEK_CUR); // "PRIM"
-    //uint32 num_verts, num_inds;
-    fread(&num_verts, sizeof(uint32), 1, fid);
-    fread(&num_inds,  sizeof(uint32), 1, fid);
-    fseek(fid, 4, SEEK_CUR); // mat_idx
+    handles = (uint32*)malloc(sizeof(uint32)*num_prims);
+    num_verts = (uint32*)malloc(sizeof(uint32)*num_prims);
+    num_inds = (uint32*)malloc(sizeof(uint32)*num_prims);
+    mat_idxs = (uint32*)malloc(sizeof(uint32)*num_prims);
 
-    uint32* indices = (uint32*)malloc(num_inds*sizeof(uint32));
-    fread(indices, sizeof(uint32), num_inds, fid);
+    // skip materials
+    for (int prim_idx = 0; prim_idx < num_prims; prim_idx++) {
+        fseek(fid, 4, SEEK_CUR);
 
+        uint32 mat_flag;
+        fread(&mat_flag, sizeof(uint32), 1, fid);
+
+        bool mat_double_sided          = mat_flag & 0x01;
+        bool mat_diffuse_has_texture   = mat_flag & 0x02;
+        bool mat_normal_has_texture    = mat_flag & 0x04;
+        bool mat_amr_has_texture       = mat_flag & 0x08;
+        bool mat_emissive_has_texture  = mat_flag & 0x10;
+
+        // skip the rest of the data
+        fseek(fid, 40, SEEK_CUR);
+
+        // mat name
+        uint8 len;
+        fread(&len, sizeof(uint8), 1, fid);
+        fseek(fid, len, SEEK_CUR);
+
+        if (mat_diffuse_has_texture) {
+            uint8 tex_len;
+            fread(&tex_len, sizeof(uint8), 1, fid);
+            fseek(fid, tex_len, SEEK_CUR);
+        }
+        if (mat_normal_has_texture) {
+            uint8 tex_len;
+            fread(&tex_len, sizeof(uint8), 1, fid);
+            fseek(fid, tex_len, SEEK_CUR);
+        }
+        if (mat_amr_has_texture) {
+            uint8 tex_len;
+            fread(&tex_len, sizeof(uint8), 1, fid);
+            fseek(fid, tex_len, SEEK_CUR);
+        }
+        if (mat_emissive_has_texture) {
+            uint8 tex_len;
+            fread(&tex_len, sizeof(uint8), 1, fid);
+            fseek(fid, tex_len, SEEK_CUR);
+        }
+    }
+
+    // read primitives
     struct vertex_file {
         laml::Vec3 position;
         laml::Vec3 normal;
@@ -53,61 +96,74 @@ bool triangle_mesh::load_from_mesh_file(const char* filename) {
         laml::Vec3 bitangent;
         laml::Vec2 texcoord;
     };
-    vertex_file* vertices_file = (vertex_file*)malloc(num_verts*sizeof(vertex_file));
-    fread(vertices_file, sizeof(vertex_file), num_verts, fid);
+
+
+    for (int prim_idx = 0; prim_idx < num_prims; prim_idx++) {
+        fseek(fid, 4, SEEK_CUR); // "PRIM"
+
+        //uint32 num_verts, num_inds;
+        fread(&num_verts[prim_idx], sizeof(uint32), 1, fid);
+        fread(&num_inds[prim_idx],  sizeof(uint32), 1, fid);
+        fread(&mat_idxs[prim_idx],  sizeof(uint32), 1, fid);
+
+        spdlog::debug("  Primitive #{0}", prim_idx);
+        spdlog::debug("    Verts: {0}", num_verts[prim_idx]);
+        spdlog::debug("    Inds: {0}", num_inds[prim_idx]);
+        spdlog::debug("    Mat_idx: {0}", mat_idxs[prim_idx]);
+
+        uint32* indices = (uint32*)malloc(num_inds[prim_idx]*sizeof(uint32));
+        fread(indices, sizeof(uint32), num_inds[prim_idx], fid);
+
+        vertex_file* vertices_file = (vertex_file*)malloc(num_verts[prim_idx]*sizeof(vertex_file));
+        fread(vertices_file, sizeof(vertex_file), num_verts[prim_idx], fid);
+
+        float global_scale = 0.01f;
+        float* vertices = (float*)malloc(num_verts[prim_idx]*6*sizeof(float));
+        for (int n = 0; n < num_verts[prim_idx]; n++) {
+            vertices[n*6 + 0] = global_scale*vertices_file[n].position.x;
+            vertices[n*6 + 1] = global_scale*vertices_file[n].position.y;
+            vertices[n*6 + 2] = global_scale*vertices_file[n].position.z;
+
+            vertices[n*6 + 3] = vertices_file[n].normal.x;
+            vertices[n*6 + 4] = vertices_file[n].normal.y;
+            vertices[n*6 + 5] = vertices_file[n].normal.z;
+        }
+        free(vertices_file);
+
+        unsigned int VBO, VAO, EBO;
+        glGenVertexArrays(1, &VAO);
+        glGenBuffers(1, &VBO);
+        glGenBuffers(1, &EBO);
+        // bind the Vertex Array Object first, then bind and set vertex buffer(s), and then configure vertex attributes(s).
+        glBindVertexArray(VAO);
+
+        glBindBuffer(GL_ARRAY_BUFFER, VBO);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(float)*6*num_verts[prim_idx], vertices, GL_STATIC_DRAW);
+
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(uint32)*num_inds[prim_idx], indices, GL_STATIC_DRAW);
+
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
+        glEnableVertexAttribArray(0);
+
+        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3*sizeof(float)));
+        glEnableVertexAttribArray(1);
+
+        glBindBuffer(GL_ARRAY_BUFFER, 0); 
+        glBindVertexArray(0); 
+
+        free(indices);
+        free(vertices);
+
+        handles[prim_idx] = VAO;
+        spdlog::debug("    handle: {0}", handles[prim_idx]);
+    }
+
+    char tag[] = "----";
+    fread(tag, sizeof(uint8), 4, fid);
+    spdlog::trace("End tag = '{0}'", tag);
 
     fclose(fid);
-
-    float* vertices = (float*)malloc(num_verts*6*sizeof(float));
-    for (int n = 0; n < num_verts; n++) {
-        vertices[n*6 + 0] = vertices_file[n].position.x;
-        vertices[n*6 + 1] = vertices_file[n].position.y;
-        vertices[n*6 + 2] = vertices_file[n].position.z;
-
-        vertices[n*6 + 3] = vertices_file[n].normal.x;
-        vertices[n*6 + 4] = vertices_file[n].normal.y;
-        vertices[n*6 + 5] = vertices_file[n].normal.z;
-    }
-    free(vertices_file);
-
-    spdlog::info("'{0}' loaded", filename);
-    spdlog::info("FileSize: {0}", filesize);
-    spdlog::info("Verts: {0}", num_verts);
-    spdlog::info("Inds: {0}", num_inds);
-
-    unsigned int VBO, VAO, EBO;
-    glGenVertexArrays(1, &VAO);
-    glGenBuffers(1, &VBO);
-    glGenBuffers(1, &EBO);
-    // bind the Vertex Array Object first, then bind and set vertex buffer(s), and then configure vertex attributes(s).
-    glBindVertexArray(VAO);
-
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(float)*6*num_verts, vertices, GL_STATIC_DRAW);
-
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(uint32)*num_inds, indices, GL_STATIC_DRAW);
-
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
-
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3*sizeof(float)));
-    glEnableVertexAttribArray(1);
-
-    // note that this is allowed, the call to glVertexAttribPointer registered VBO as the vertex attribute's bound vertex buffer object so afterwards we can safely unbind
-    glBindBuffer(GL_ARRAY_BUFFER, 0); 
-
-    // remember: do NOT unbind the EBO while a VAO is active as the bound element buffer object IS stored in the VAO; keep the EBO bound.
-    //glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-
-    // You can unbind the VAO afterwards so other VAO calls won't accidentally modify this VAO, but this rarely happens. Modifying other
-    // VAOs requires a call to glBindVertexArray anyways so we generally don't unbind VAOs (nor VBOs) when it's not directly necessary.
-    glBindVertexArray(0); 
-
-    free(indices);
-    free(vertices);
-
-    handle = VAO;
 
     return true;
 }

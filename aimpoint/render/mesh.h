@@ -2,6 +2,8 @@
 #include "defines.h"
 
 struct triangle_mesh {
+    ~triangle_mesh();
+
     struct vertex {
         laml::Vec3 position;
         laml::Vec3 normal;
@@ -10,12 +12,13 @@ struct triangle_mesh {
     bool load_from_mesh_file(const char* filename);
 
 private:
-    uint32 handle;
+    uint16 num_prims = 0;
+    uint32* handles = nullptr;
+    uint32* num_verts = nullptr;
+    uint32* num_inds = nullptr;
+    uint32* mat_idxs = nullptr;
 
-    uint32 num_verts;
-    uint32 num_inds;
-
-    uint32 flag;
+    uint32 flag = 0;
 
     friend struct opengl_renderer;
 };

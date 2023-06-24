@@ -79,17 +79,18 @@ int aimpoint::init() {
     body2.set_mass(1.0);
     body2.set_inertia(0.2, 0.3, 0.4);
     body2.state.ang_velocity.x = 0.5;
-    body2.state.ang_velocity.y = 25.0;
+    body2.state.ang_velocity.y = 10.0;
     body2.state.ang_velocity.z = 0.5;
 
-    cam_pos = laml::Vec3(0.0f, 0.0f, 3.5f);
+    cam_pos = laml::Vec3(0.0f, 0.0f, 2.0f);
     yaw = 0;
     pitch = 0;
 
     renderer.init_gl_glfw(this, 640, 480);
 
     // Load mesh from file
-    mesh.load_from_mesh_file("../data/Cylinder.mesh");
+    //mesh.load_from_mesh_file("../data/Cylinder.mesh");
+    mesh.load_from_mesh_file("../data/blahaj.mesh");
 
     spdlog::info("Application intitialized");
 
@@ -105,7 +106,7 @@ void aimpoint::step(double dt) {
 
     int64 cycles_per_second = (int64)simulation_rate;
     if (sim_frame % (cycles_per_second) == 0) {
-        spdlog::debug("[{0:0.3f}] simulation step", sim_time);
+        spdlog::info("[{0:0.3f}] simulation step", sim_time);
     }
 
     //body.major_step(sim_time, dt);
@@ -131,10 +132,10 @@ void aimpoint::render() {
 
     // Draw UI
     renderer.start_debug_UI();
+    static bool show_info_panel = false;
 
     const ImGuiIO& io = ImGui::GetIO();
-    // 1. Show a simple window that we create ourselves. We use a Begin/End pair to create a named window.
-    {
+    if (show_info_panel) {
         ImGui::Begin("Spinning T-Handle");
 
         ImGui::TextWrapped("Demonstrates the proper integration of Euler's Equations of Motion using body-fixed anguar velocites.");
@@ -184,7 +185,7 @@ void aimpoint::key_callback(int key, int scancode, int action, int mods) {
 int main(int argc, char** argv) {
     aimpoint app;
 
-    set_terminal_log_level(log_level::trace);
+    set_terminal_log_level(log_level::info);
     spdlog::info("Creating application...");
 
     app.run();

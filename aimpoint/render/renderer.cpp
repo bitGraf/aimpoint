@@ -91,8 +91,8 @@ int32 opengl_renderer::init_gl_glfw(aimpoint* app_ptr, int32 width, int32 height
                                        "void main()\n"
                                        "{\n"
                                        "   vec3 light_dir = normalize(vec3(1.0f, -5.0f, 3.0f));\n"
-                                       "   vec3 color = vec3(.4f, 0.1f, .2f);\n"
-                                       "   vec3 ambient = vec3(.2f, 0.2f, .2f);\n"
+                                       "   vec3 color = vec3(.3333f, 0.4588f, .5418f);\n"
+                                       "   vec3 ambient = vec3(.15f, 0.15f, .15f);\n"
                                        "   FragColor = vec4(ambient + dot(light_dir, out_normal) * color, 1.0f);\n"
                                        "}\0";
 
@@ -217,8 +217,10 @@ void opengl_renderer::draw_mesh(const triangle_mesh& mesh, const laml::Vec3& pos
     int transformLocation = glGetUniformLocation(shader, "r_Transform");
     glUniformMatrix4fv(transformLocation, 1, GL_FALSE, transform_matrix._data);
 
-    glBindVertexArray(mesh.handle);
-    glDrawElements(GL_TRIANGLES, mesh.num_inds, GL_UNSIGNED_INT, 0);
+    for (int n = 0; n < mesh.num_prims; n++) {
+        glBindVertexArray(mesh.handles[n]);
+        glDrawElements(GL_TRIANGLES, mesh.num_inds[n], GL_UNSIGNED_INT, 0);
+    }
 }
 
 void opengl_renderer::start_debug_UI() {    
