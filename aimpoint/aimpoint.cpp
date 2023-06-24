@@ -7,6 +7,8 @@
 
 #include <stdio.h>
 
+#include "imgui.h"
+
 int aimpoint::run() {
     if (init()) {
         // failed on initialization
@@ -103,11 +105,7 @@ void aimpoint::step(double dt) {
 
     int64 cycles_per_second = (int64)simulation_rate;
     if (sim_frame % (cycles_per_second) == 0) {
-        //spdlog::debug("[{0:0.3f}] simulation step", sim_time);
-        double rot_KE = 0.5 * laml::dot(body2.state.ang_velocity*body2.inertia, body2.state.ang_velocity);
-        spdlog::debug("[{0:0.3f}] Rotational KE: {1:.3f} J", sim_time, rot_KE);
-        //spdlog::info("t(s) = {0:4.1f}     alt(km) = {1:7.3f}     speed(m/s) = {2:7.3f}", 
-        //             sim_time, laml::length(body.state.position)/1000.0, laml::length(body.state.velocity));
+        spdlog::debug("[{0:0.3f}] simulation step", sim_time);
     }
 
     //body.major_step(sim_time, dt);
@@ -130,6 +128,31 @@ void aimpoint::render() {
         laml::Quat render_rot(body2.state.orientation);
         renderer.draw_mesh(mesh, render_pos, render_rot);
     }
+
+    // Draw UI
+    renderer.start_debug_UI();
+
+    const ImGuiIO& io = ImGui::GetIO();
+    // 1. Show a simple window that we create ourselves. We use a Begin/End pair to create a named window.
+    {
+        ImGui::Begin("Spinning T-Handle");
+
+        ImGui::TextWrapped("Demonstrates the proper integration of Euler's Equations of Motion using body-fixed anguar velocites.");
+
+        double rot_KE = 0.5 * laml::dot(body2.state.ang_velocity*body2.inertia, body2.state.ang_velocity);
+        double lin_KE = 0.5 * body.mass * laml::dot(body.state.velocity, body.state.velocity);
+
+        ImGui::Separator();
+        ImGui::Text("System Energy:");
+        ImGui::Text("    Linear KE = %.3f J", lin_KE);
+        ImGui::Text("Rotational KE = %.3f J", rot_KE);
+        ImGui::Separator();
+
+        ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
+        ImGui::End();
+    }
+
+    renderer.end_debug_UI();
 
     renderer.end_frame();
 
