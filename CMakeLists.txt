@@ -32,7 +32,7 @@ add_subdirectory("deps/spdlog")
 add_subdirectory("deps/math_lib")
 
 # direct-to-video
-option(USE_DTV "Use Direct-To-Video library to save video" ON) #OFF by default
+option(USE_DTV "Use Direct-To-Video library to save video" OFF) #OFF by default
 if(USE_DTV)
     add_subdirectory("deps/DTV")
 endif(USE_DTV)
@@ -48,19 +48,21 @@ add_executable( aimpoint
     ${SRC_DIR}/aimpoint.cpp
     ${SRC_DIR}/log.cpp
     ${SRC_DIR}/physics.cpp
-    ${SRC_DIR}/mesh.cpp
     ${SRC_DIR}/body_type/t_bar.cpp
     ${SRC_DIR}/body_type/rocket.cpp
     ${SRC_DIR}/body_type/mass_spring_damper.cpp
+    ${SRC_DIR}/render/renderer.cpp
+    ${SRC_DIR}/render/mesh.cpp
 
     ${SRC_DIR}/aimpoint.h
     ${SRC_DIR}/log.h
     ${SRC_DIR}/defines.h
     ${SRC_DIR}/physics.h
-    ${SRC_DIR}/mesh.h
     ${SRC_DIR}/body_type/t_bar.h
     ${SRC_DIR}/body_type/rocket.h
     ${SRC_DIR}/body_type/mass_spring_damper.h
+    ${SRC_DIR}/render/renderer.h
+    ${SRC_DIR}/render/mesh.h
 )
 
 if(USE_DTV)

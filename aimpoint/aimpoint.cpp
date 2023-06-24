@@ -2,18 +2,10 @@
 
 #include "log.h"
 
-#include <glad/gl.h>
-#include <GLFW/glfw3.h>
-
 #include <thread>
 #include <chrono>
 
 #include <stdio.h>
-
-// global vars for GLFW
-static GLFWwindow* window = nullptr;
-void glfw_error_callback(int error, const char* description);
-void glfw_key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
 
 int aimpoint::run() {
     if (init()) {
@@ -24,19 +16,19 @@ int aimpoint::run() {
     sim_time = 0.0;
     const double step_time = 1.0 / simulation_rate;
 
-    wall_time = glfwGetTime();
+    wall_time = renderer.get_time();
     double accum_time = 0.0;
 
     bool done = false;
     while(!done) {
-        double new_time = glfwGetTime();
+        double new_time = renderer.get_time();
         double frame_time = new_time - wall_time;
         wall_time = new_time;
 
         accum_time += frame_time;
 
-        glfwPollEvents();
-        if (glfwWindowShouldClose(window) ) {
+        renderer.poll_events();
+        if (renderer.should_window_close()) {
             done = true;
         }
 
@@ -53,7 +45,7 @@ int aimpoint::run() {
             }
         } else {
             double render_time = wall_time + 1.0/65.0;
-            while (glfwGetTime() < render_time) {
+            while (renderer.get_time() < render_time) {
                 step(step_time);
                 sim_time += step_time;
             }
@@ -61,7 +53,6 @@ int aimpoint::run() {
 
         double alpha = accum_time / step_time; // interpolation value [0,1]
         render();
-        glfwSwapBuffers(window);
     }
 
     shutdown();
@@ -76,9 +67,6 @@ int aimpoint::init() {
 
     sim_time = 0.0;
     wall_time = 0.0;
-
-    window_width = 640;
-    window_height = 480;
 
     body.spring_constant = 100.0;
     body.damping_constant = 0.25;
@@ -96,250 +84,10 @@ int aimpoint::init() {
     yaw = 0;
     pitch = 0;
 
-    // setup glfw
-    if (!glfwInit()) {
-        // init failed
-        spdlog::critical("Failed to initialize GLFW");
-        return 1;
-    }
-    glfwSetErrorCallback(glfw_error_callback);
-
-    // create window and OpenGL context
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-    window = glfwCreateWindow(window_width, window_height, "Aimpoint", NULL, NULL);
-    if (!window) {
-        // Window or OpenGL context creation failed
-        spdlog::critical("Failed to create GLFW Window");
-        return 2;
-    }
-
-    glfwSetKeyCallback(window, glfw_key_callback);
-
-    glfwSetWindowUserPointer(window, this);
-
-    glfwMakeContextCurrent(window);
-    gladLoadGL(glfwGetProcAddress);
-
-    glfwGetFramebufferSize(window, &window_width, &window_height);
-    glViewport(0, 0, window_width, window_height);
-
-    glfwSwapInterval(2);
-
-    glEnable(GL_DEPTH_TEST);
-
-    // create gpu objects
-    const char *vertexShaderSource = "#version 430 core\n"
-                                     "layout (location = 0) in vec3 a_Position;\n"
-                                     "layout (location = 1) in vec3 a_Normal;\n"
-                                     "layout (location = 1) uniform mat4 r_View;\n"
-                                     "layout (location = 2) uniform mat4 r_Projection;\n"
-                                     "layout (location = 3) uniform mat4 r_Transform;\n"
-                                     "out vec3 out_normal;\n"
-                                     "void main() {\n"
-                                     "    gl_Position = r_Projection * r_View * r_Transform * vec4(a_Position, 1.0);\n"
-                                     "    out_normal = vec3(r_Transform * vec4(a_Normal, 0.0f));\n"
-                                     "}\n";
-
-    unsigned int vertexShader;
-    vertexShader = glCreateShader(GL_VERTEX_SHADER);
-
-    glShaderSource(vertexShader, 1, &vertexShaderSource, NULL);
-    glCompileShader(vertexShader);
-
-    int  success;
-    char infoLog[512];
-    glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
-
-    if(!success) {
-        glGetShaderInfoLog(vertexShader, 512, NULL, infoLog);
-        spdlog::critical("ERROR::SHADER::VERTEX::COMPILATION_FAILED\n{0}", infoLog);
-        return 3;
-    }
-
-    const char *fragmentShaderSource = "#version 430 core\n"
-                                       "out vec4 FragColor;\n"
-                                       "in vec3 out_normal;\n"
-                                       "void main()\n"
-                                       "{\n"
-                                       "   vec3 light_dir = normalize(vec3(1.0f, -5.0f, 3.0f));\n"
-                                       "   vec3 color = vec3(.4f, 0.1f, .2f);\n"
-                                       "   vec3 ambient = vec3(.2f, 0.2f, .2f);\n"
-                                       "   FragColor = vec4(ambient + dot(light_dir, out_normal) * color, 1.0f);\n"
-                                       "}\0";
-
-    unsigned int fragmentShader;
-    fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fragmentShader, 1, &fragmentShaderSource, NULL);
-    glCompileShader(fragmentShader);
-
-    glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
-
-    if(!success) {
-        glGetShaderInfoLog(fragmentShader, 512, NULL, infoLog);
-        spdlog::critical("ERROR::SHADER::FRAGMENT::COMPILATION_FAILED\n{0}", infoLog);
-        return 3;
-    }
-
-    unsigned int shaderProgram;
-    shaderProgram = glCreateProgram();
-
-    glAttachShader(shaderProgram, vertexShader);
-    glAttachShader(shaderProgram, fragmentShader);
-    glLinkProgram(shaderProgram);
-
-    glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
-    if(!success) {
-        glGetProgramInfoLog(shaderProgram, 512, NULL, infoLog);
-        spdlog::critical("ERROR::SHADER::LINKING_FAILED\n{0}", infoLog);
-        return 3;
-    }
-
-    shader = shaderProgram;
-    glUseProgram(shaderProgram);
-
-    glDeleteShader(vertexShader);
-    glDeleteShader(fragmentShader);  
+    renderer.init_gl_glfw(this, 640, 480);
 
     // Load mesh from file
-    FILE* fid = fopen("../data/Cylinder.mesh", "rb");
-    if (fid == nullptr) {
-        // try one more directory up
-        fid = fopen("../../data/Cylinder.mesh", "rb");
-
-        if (fid == nullptr) {
-            spdlog::critical("Could not open mesh file!\n");
-            return 4;
-        }
-    }
-    fseek(fid, 4, SEEK_SET); // "MESH"
-    uint16 num_prims;
-    uint32 filesize, mesh_version, flag;
-    uint64 timestamp;
-
-    fread(&filesize,     sizeof(uint32), 1, fid);
-    fread(&mesh_version, sizeof(uint32), 1, fid);
-    fread(&timestamp,    sizeof(uint64), 1, fid);
-    fread(&flag,         sizeof(uint32), 1, fid);
-    fread(&num_prims,    sizeof(uint16), 1, fid);
-
-    // skip material
-    fseek(fid, 48, SEEK_CUR);
-    uint8 len;
-    fread(&len, sizeof(uint8), 1, fid);
-    fseek(fid, len, SEEK_CUR);
-
-    // read first primitive
-    fseek(fid, 4, SEEK_CUR); // "PRIM"
-    uint32 num_verts, num_inds;
-    fread(&num_verts, sizeof(uint32), 1, fid);
-    fread(&num_inds,  sizeof(uint32), 1, fid);
-    fseek(fid, 4, SEEK_CUR); // mat_idx
-
-    uint32* indices = (uint32*)malloc(num_inds*sizeof(uint32));
-    fread(indices, sizeof(uint32), num_inds, fid);
-
-    struct vertex_file {
-        laml::Vec3 position;
-        laml::Vec3 normal;
-        laml::Vec3 tangent;
-        laml::Vec3 bitangent;
-        laml::Vec2 texcoord;
-    };
-    vertex_file* vertices_file = (vertex_file*)malloc(num_verts*sizeof(vertex_file));
-    fread(vertices_file, sizeof(vertex_file), num_verts, fid);
-
-    fclose(fid);
-
-    float* vertices = (float*)malloc(num_verts*6*sizeof(float));
-    for (int n = 0; n < num_verts; n++) {
-        vertices[n*6 + 0] = vertices_file[n].position.x;
-        vertices[n*6 + 1] = vertices_file[n].position.y;
-        vertices[n*6 + 2] = vertices_file[n].position.z;
-
-        vertices[n*6 + 3] = vertices_file[n].normal.x;
-        vertices[n*6 + 4] = vertices_file[n].normal.y;
-        vertices[n*6 + 5] = vertices_file[n].normal.z;
-    }
-    free(vertices_file);
-
-    spdlog::info("Cylinder.mesh loaded");
-    spdlog::info("FileSize: {0}", filesize);
-    spdlog::info("Verts: {0}", num_verts);
-    spdlog::info("Inds: {0}", num_inds);
-
-    //float vertices[] = {
-    //    -0.5f, -0.5f, -0.5f,   0.0f, 0.0f, -1.0f,
-    //     0.5f, -0.5f, -0.5f,   0.0f, 0.0f, -1.0f,
-    //     0.5f,  0.5f, -0.5f,   0.0f, 0.0f, -1.0f,
-    //    -0.5f,  0.5f, -0.5f,   0.0f, 0.0f, -1.0f,
-    //
-    //     0.5f, -0.5f,  0.5f,   0.0f, 0.0f, 1.0f,
-    //    -0.5f, -0.5f,  0.5f,   0.0f, 0.0f, 1.0f,
-    //     0.5f,  0.5f,  0.5f,   0.0f, 0.0f, 1.0f,
-    //    -0.5f,  0.5f,  0.5f,   0.0f, 0.0f, 1.0f,
-    //
-    //    -0.5f,  0.5f,  0.5f,  -1.0f, 0.0f, 0.0f,
-    //    -0.5f,  0.5f, -0.5f,  -1.0f, 0.0f, 0.0f,
-    //    -0.5f, -0.5f, -0.5f,  -1.0f, 0.0f, 0.0f,
-    //    -0.5f, -0.5f,  0.5f,  -1.0f, 0.0f, 0.0f,
-    //
-    //     0.5f,  0.5f,  0.5f,   1.0f, 0.0f, 0.0f,
-    //     0.5f,  0.5f, -0.5f,   1.0f, 0.0f, 0.0f,
-    //     0.5f, -0.5f, -0.5f,   1.0f, 0.0f, 0.0f,
-    //     0.5f, -0.5f,  0.5f,   1.0f, 0.0f, 0.0f,
-    //
-    //    -0.5f, -0.5f, -0.5f,   0.0f, -1.0f, 0.0f,
-    //     0.5f, -0.5f, -0.5f,   0.0f, -1.0f, 0.0f,
-    //     0.5f, -0.5f,  0.5f,   0.0f, -1.0f, 0.0f,
-    //    -0.5f, -0.5f,  0.5f,   0.0f, -1.0f, 0.0f,
-    //
-    //    -0.5f,  0.5f, -0.5f,   0.0f, 1.0f, 0.0f,
-    //     0.5f,  0.5f, -0.5f,   0.0f, 1.0f, 0.0f,
-    //     0.5f,  0.5f,  0.5f,   0.0f, 1.0f, 0.0f,
-    //    -0.5f,  0.5f,  0.5f,   0.0f, 1.0f, 0.0f,
-    //};
-    //unsigned int indices[] = {  // note that we start from 0!
-    //    0,  1,  2,  0,  2,  3,
-    //    4,  5,  6,  6,  5,  7,
-    //    9,  8, 10, 10,  8, 11,
-    //   12, 13, 14, 12, 14, 15,
-    //   17, 16, 18, 18, 16, 19,
-    //   20, 21, 22, 20, 22, 23,
-    //};  
-
-    unsigned int VBO, VAO, EBO;
-    glGenVertexArrays(1, &VAO);
-    glGenBuffers(1, &VBO);
-    glGenBuffers(1, &EBO);
-    // bind the Vertex Array Object first, then bind and set vertex buffer(s), and then configure vertex attributes(s).
-    glBindVertexArray(VAO);
-
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(float)*6*num_verts, vertices, GL_STATIC_DRAW);
-
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(uint32)*num_inds, indices, GL_STATIC_DRAW);
-
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
-
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3*sizeof(float)));
-    glEnableVertexAttribArray(1);
-
-    // note that this is allowed, the call to glVertexAttribPointer registered VBO as the vertex attribute's bound vertex buffer object so afterwards we can safely unbind
-    glBindBuffer(GL_ARRAY_BUFFER, 0); 
-
-    // remember: do NOT unbind the EBO while a VAO is active as the bound element buffer object IS stored in the VAO; keep the EBO bound.
-    //glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-
-    // You can unbind the VAO afterwards so other VAO calls won't accidentally modify this VAO, but this rarely happens. Modifying other
-    // VAOs requires a call to glBindVertexArray anyways so we generally don't unbind VAOs (nor VBOs) when it's not directly necessary.
-    glBindVertexArray(0); 
-
-    free(indices);
-    free(vertices);
-    vao = VAO;
+    mesh.load_from_mesh_file("../data/Cylinder.mesh");
 
     init_recording();
 
@@ -364,52 +112,27 @@ void aimpoint::step(double dt) {
     }
 
     //body.major_step(sim_time, dt);
-    //body.integrate_states(sim_time, dt);
+    body.integrate_states(sim_time, dt);
     body2.integrate_states(sim_time, dt);
     
     sim_frame++;
 }
 
 void aimpoint::render() {
-    glClearColor(0.2f, 0.4f, 0.1f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    renderer.start_frame(cam_pos, yaw, pitch);
 
-    glUseProgram(shader);
+    {
+        laml::Vec3 render_pos(body.state.position);
+        laml::Quat render_rot(body.state.orientation);
+        renderer.draw_mesh(mesh, render_pos, render_rot);
+    }
+    {
+        laml::Vec3 render_pos(body2.state.position);
+        laml::Quat render_rot(body2.state.orientation);
+        renderer.draw_mesh(mesh, render_pos, render_rot);
+    }
 
-    float eye_4x4[16] = {1.0f, 0.0f, 0.0f, 0.0f,
-                         0.0f, 1.0f, 0.0f, 0.0f,
-                         0.0f, 0.0f, 1.0f, 0.0f,
-                         0.0f, 0.0f, 0.0f, 1.0f};
-
-    //laml::transform::create_projection_perspective(
-
-    laml::Mat4 cam_transform, view_matrix;
-    laml::transform::create_transform_translate(cam_transform, cam_pos);
-    laml::transform::create_view_matrix_from_transform(view_matrix, cam_transform);
-    int viewLocation = glGetUniformLocation(shader, "r_View");
-    glUniformMatrix4fv(viewLocation, 1, GL_FALSE, view_matrix._data);
-
-    laml::Mat4 projection_matrix;
-    float AR = ((float)window_width / (float)window_height);
-    laml::transform::create_projection_perspective(projection_matrix, 75.0f, AR, 0.1f, 100.0f);
-    //laml::transform::create_projection_orthographic(projection_matrix, -10.0f, 10.0f, -10.0f, 10.0f, -10.0f, 10.0f);
-    int projLocation = glGetUniformLocation(shader, "r_Projection");
-    glUniformMatrix4fv(projLocation, 1, GL_FALSE, projection_matrix._data);
-
-    laml::Mat4 transform_matrix;
-    laml::Vec3 render_pos(body.state.position);
-    laml::transform::create_transform_translate(transform_matrix, render_pos);
-    int transformLocation = glGetUniformLocation(shader, "r_Transform");
-    //glUniformMatrix4fv(transformLocation, 1, GL_FALSE, transform_matrix._data);
-
-    glBindVertexArray(vao);
-    //glDrawArrays(GL_TRIANGLES, 0, 6);
-    //glDrawElements(GL_TRIANGLES, 360, GL_UNSIGNED_INT, 0);
-
-    laml::Quat render_orientation(body2.state.orientation);
-    laml::transform::create_transform_rotation(transform_matrix, render_orientation);
-    glUniformMatrix4fv(transformLocation, 1, GL_FALSE, transform_matrix._data);
-    glDrawElements(GL_TRIANGLES, 360, GL_UNSIGNED_INT, 0);
+    renderer.end_frame();
 
     //spdlog::trace("[{0:0.3f}] ({1:0.3f}) render step", sim_time, alpha);
     //spdlog::trace("[{0:0.3f}] render step", sim_time);
@@ -436,28 +159,12 @@ void aimpoint::render() {
 void aimpoint::shutdown() {
     stop_recording();
 
-    glfwDestroyWindow(window);
-
-    glfwTerminate();
+    renderer.shutdown();
 
     spdlog::info("Application shutdown");
 }
 
 void aimpoint::key_callback(int key, int scancode, int action, int mods) {
-    if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
-        glfwSetWindowShouldClose(window, GLFW_TRUE);
-}
-
-
-
-// GLFW Callbacks
-void glfw_error_callback(int error, const char* description) {
-    spdlog::error("[GLFW] Error {0}: {1}", error, description);
-}
-
-void glfw_key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
-    aimpoint* app = (aimpoint*)glfwGetWindowUserPointer(window);
-    app->key_callback(key, scancode, action, mods);
 }
 
 
