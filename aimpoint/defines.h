@@ -16,3 +16,5 @@ typedef std::int32_t int32;
 typedef std::int64_t int64;
 
 #endif
+
+#define USE_DTV 0

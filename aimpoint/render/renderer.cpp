@@ -124,10 +124,14 @@ int32 opengl_renderer::init_gl_glfw(aimpoint* app_ptr, int32 width, int32 height
     glDeleteShader(vertexShader);
     glDeleteShader(fragmentShader);
 
+    init_recording();
+
     return 0;
 }
 
 void opengl_renderer::shutdown() {
+    stop_recording();
+
     glfwDestroyWindow((GLFWwindow*)raw_glfw_window);
 
     glfwTerminate();
@@ -189,4 +193,58 @@ void opengl_renderer::draw_mesh(const triangle_mesh& mesh, const laml::Vec3& pos
 
 void opengl_renderer::end_frame(){
     glfwSwapBuffers((GLFWwindow*)raw_glfw_window);
+
+    // RECORDING
+#if USE_DTV
+    atg_dtv::Frame *frame = encoder.newFrame(false);
+    if (frame) {
+        if (encoder.getError() != atg_dtv::Encoder::Error::None) {
+            spdlog::error("RTV Error!");
+        }
+
+        // NOTE: This is very SLOW!! possibly need to look into pixel buffer objects?
+        //       not an issue rn tho...
+        glReadPixels(0, 0, window_width, window_height, GL_RGB, GL_UNSIGNED_BYTE, frame->m_rgb);
+
+        encoder.submitFrame();
+    } else {
+        spdlog::info("RTV Done!");
+    }
+#endif
+}
+
+bool opengl_renderer::init_recording() {
+#if USE_DTV
+    atg_dtv::Encoder::VideoSettings settings{};
+
+    // Output filename
+    settings.fname = "output.mp4";
+
+    // Input dimensions
+    settings.inputWidth = 640;
+    settings.inputHeight = 480;
+
+    // Output dimensions
+    settings.width = 640;
+    settings.height = 480;
+
+    // Encoder settings
+    settings.hardwareEncoding = true;
+    settings.bitRate = 16000000;
+
+    const int VideoLengthSeconds = 10;
+    const int FrameCount = VideoLengthSeconds * settings.frameRate;
+
+    encoder.run(settings, 2);
+#endif
+    return true;
+}
+
+bool opengl_renderer::stop_recording() {
+#if USE_DTV
+    encoder.commit();
+    encoder.stop();
+
+#endif
+    return true;
 }

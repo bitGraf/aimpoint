@@ -3,8 +3,12 @@
 
 #include "mesh.h"
 
-struct aimpoint;
+// for recording
+#if USE_DTV
+#include "dtv.h"
+#endif
 
+struct aimpoint;
 struct opengl_renderer {
     opengl_renderer();
 
@@ -25,4 +29,11 @@ private:
     void* raw_glfw_window;
 
     uint32 shader;
+
+    // video recording
+#if USE_DTV
+    atg_dtv::Encoder encoder;
+#endif
+    bool init_recording();
+    bool stop_recording();
 };
