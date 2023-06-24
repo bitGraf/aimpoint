@@ -4,7 +4,7 @@
 #include "body_type/t_bar.h"
 
 // for recording
-#define USE_DTV 0
+#define USE_DTV 1
 #if USE_DTV
 #include "dtv.h"
 #endif

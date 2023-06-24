@@ -110,19 +110,6 @@ void simulation_body::set_state(laml::Vec3_highp position, laml::Vec3_highp velo
     derivative.ang_acceleration = laml::Vec3_highp(0.0, 0.0, 0.0);
 }
 
-//void simulation_body::calc_secondary_states() {
-//    momentum = state.velocity * mass;
-//    //ang_momentum = state.ang_velocity * inertia; // component-wise operator
-//    
-//    //state.orientation = laml::normalize(state.orientation);
-//    
-//    //laml::Quat_highp q(state.ang_velocity.x, state.ang_velocity.y, state.ang_velocity.z, 0.0);
-//    //spin = 0.5f * laml::mul(q, state.orientation);
-//    
-//    linear_KE     = 0.5 * laml::dot(momentum, state.velocity);
-//    rotational_KE = 0.5 * laml::dot(ang_momentum, state.ang_velocity);
-//}
-
 /* Operatores to create weighted sums of Derivatives (for certain integration stages) */
 rigid_body_derivative operator+(const rigid_body_derivative& A, const rigid_body_derivative& B) {
     rigid_body_derivative res;
@@ -201,7 +188,6 @@ void simulation_body::minor_step(double t, double dt, rigid_body_derivative* min
     minor_state->position = minor_state->position + minor_derivative->velocity*dt;
     minor_state->velocity = minor_state->velocity + minor_derivative->acceleration*dt;
 
-    //minor_state->orientation  = laml::normalize(minor_state->orientation  + minor_derivative->spin*dt);
     minor_state->orientation  = minor_state->orientation  + minor_derivative->spin*dt;
     minor_state->ang_velocity = minor_state->ang_velocity + minor_derivative->ang_acceleration*dt;
 
@@ -218,7 +204,7 @@ void simulation_body::apply_force(laml::Vec3_highp force, laml::Vec3_highp locat
 }
 
 void simulation_body::integrate_states(double t, double dt) {
-    const int8 integration_mode = 5;
+    const int8 integration_mode = 3;
 
     switch(integration_mode) {
         case 1: { // ode1 - Euler Method

@@ -32,7 +32,7 @@ add_subdirectory("deps/spdlog")
 add_subdirectory("deps/math_lib")
 
 # direct-to-video
-option(USE_DTV "Use Direct-To-Video library to save video" OFF) #OFF by default
+option(USE_DTV "Use Direct-To-Video library to save video" ON) #OFF by default
 if(USE_DTV)
     add_subdirectory("deps/DTV")
 endif(USE_DTV)

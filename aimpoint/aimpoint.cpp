@@ -46,7 +46,7 @@ int aimpoint::run() {
                 sim_time += step_time;
                 accum_time -= step_time;
 
-                if (sim_time >= 35.0) { 
+                if (sim_time >= 5.0) { 
                     done = true;
                     break; 
                 }
@@ -70,7 +70,7 @@ int aimpoint::run() {
 }
 
 int aimpoint::init() {
-    simulation_rate = 100.0; // Hz
+    simulation_rate = 200.0; // Hz
     sim_frame = 0;
     real_time = true;
 
@@ -400,7 +400,7 @@ void aimpoint::render() {
     laml::Vec3 render_pos(body.state.position);
     laml::transform::create_transform_translate(transform_matrix, render_pos);
     int transformLocation = glGetUniformLocation(shader, "r_Transform");
-    glUniformMatrix4fv(transformLocation, 1, GL_FALSE, transform_matrix._data);
+    //glUniformMatrix4fv(transformLocation, 1, GL_FALSE, transform_matrix._data);
 
     glBindVertexArray(vao);
     //glDrawArrays(GL_TRIANGLES, 0, 6);
@@ -422,16 +422,9 @@ void aimpoint::render() {
             spdlog::error("RTV Error!");
         }
 
-        const int lineWidth = frame->m_lineWidth;
-        for (int y = 0; y < 480; ++y) {
-            uint8_t *row = &frame->m_rgb[y * lineWidth];
-            for (int x = 0; x < 640; ++x) {
-                const int index = x * 3;
-                row[index + 0] = (x + sim_frame) & 0xFF; // r
-                row[index + 1] = (y + sim_frame) & 0xFF; // g
-                row[index + 2] = 0 & 0xFF;   // b
-            }
-        }
+        // NOTE: This is very SLOW!! possibly need to look into pixel buffer objects?
+        //       not an issue rn tho...
+        glReadPixels(0, 0, window_width, window_height, GL_RGB, GL_UNSIGNED_BYTE, frame->m_rgb);
 
         encoder.submitFrame();
     } else {
