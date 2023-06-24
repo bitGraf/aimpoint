@@ -38,7 +38,7 @@ int aimpoint::run() {
                 sim_time += step_time;
                 accum_time -= step_time;
 
-                if (sim_time >= 5.0) { 
+                if (sim_time >= 50.0) { 
                     done = true;
                     break; 
                 }

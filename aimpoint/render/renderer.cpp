@@ -3,6 +3,11 @@
 #include <glad/gl.h>
 #include <GLFW/glfw3.h>
 
+// Dear ImGui
+#include <imgui.h>
+#include <backends/imgui_impl_glfw.h>
+#include <backends/imgui_impl_opengl3.h>
+
 #include "log.h"
 
 #include "aimpoint.h"
@@ -124,12 +129,36 @@ int32 opengl_renderer::init_gl_glfw(aimpoint* app_ptr, int32 width, int32 height
     glDeleteShader(vertexShader);
     glDeleteShader(fragmentShader);
 
+    // Setup Dear ImGui context
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGuiIO& io = ImGui::GetIO(); (void)io;
+    io.IniFilename = "../data/imgui.ini";
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
+    io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;         // Enable Docking
+    //io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;       // Enable Multi-Viewport / Platform Windows
+
+    // Setup Dear ImGui style
+    ImGui::StyleColorsDark();
+    //ImGui::StyleColorsLight();
+
+    // Setup Platform/Renderer backends
+    ImGui_ImplGlfw_InitForOpenGL(window, true);
+    const char* glsl_version = "#version 130";
+    ImGui_ImplOpenGL3_Init(glsl_version);
+
     init_recording();
 
     return 0;
 }
 
 void opengl_renderer::shutdown() {
+    // Cleanup
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplGlfw_Shutdown();
+    ImGui::DestroyContext();
+
     stop_recording();
 
     glfwDestroyWindow((GLFWwindow*)raw_glfw_window);
@@ -192,6 +221,49 @@ void opengl_renderer::draw_mesh(const triangle_mesh& mesh, const laml::Vec3& pos
 }
 
 void opengl_renderer::end_frame(){
+    // Our state
+    bool show_demo_window = true;
+    bool show_another_window = false;
+    ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
+    // Start the Dear ImGui frame
+    ImGui_ImplOpenGL3_NewFrame();
+    ImGui_ImplGlfw_NewFrame();
+    ImGui::NewFrame();
+
+    auto id = ImGui::DockSpaceOverViewport(NULL, ImGuiDockNodeFlags_PassthruCentralNode);
+
+    // 1. Show the big demo window (Most of the sample code is in ImGui::ShowDemoWindow()! You can browse its code to learn more about Dear ImGui!).
+    if (show_demo_window)
+        ImGui::ShowDemoWindow(&show_demo_window);
+    
+    // 2. Show a simple window that we create ourselves. We use a Begin/End pair to create a named window.
+    {
+        static float f = 0.0f;
+        static int counter = 0;
+
+        ImGui::Begin("Hello, world!");                          // Create a window called "Hello, world!" and append into it.
+
+        ImGui::Text("This is some useful text.");               // Display some text (you can use a format strings too)
+        ImGui::Checkbox("Demo Window", &show_demo_window);      // Edit bools storing our window open/close state
+        ImGui::Checkbox("Another Window", &show_another_window);
+
+        ImGui::SliderFloat("float", &f, 0.0f, 1.0f);            // Edit 1 float using a slider from 0.0f to 1.0f
+        ImGui::ColorEdit3("clear color", (float*)&clear_color); // Edit 3 floats representing a color
+
+        if (ImGui::Button("Button"))                            // Buttons return true when clicked (most widgets return true when edited/activated)
+            counter++;
+        ImGui::SameLine();
+        ImGui::Text("counter = %d", counter);
+
+        //ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
+        ImGui::End();
+    }
+
+    // Rendering
+    ImGui::Render();
+    ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
+
     glfwSwapBuffers((GLFWwindow*)raw_glfw_window);
 
     // RECORDING
@@ -204,7 +276,19 @@ void opengl_renderer::end_frame(){
 
         // NOTE: This is very SLOW!! possibly need to look into pixel buffer objects?
         //       not an issue rn tho...
-        glReadPixels(0, 0, window_width, window_height, GL_RGB, GL_UNSIGNED_BYTE, frame->m_rgb);
+        //glReadPixels(0, 0, window_width, window_height, GL_RGB, GL_UNSIGNED_BYTE, frame->m_rgb);
+
+        if (tmp_buffer == nullptr) {
+            tmp_buffer = new uint8[(size_t)frame->m_maxHeight * frame->m_lineWidth];
+        }
+        glReadPixels(0, 0, window_width, window_height, GL_RGB, GL_UNSIGNED_BYTE, tmp_buffer);
+        const int lineWidth = frame->m_lineWidth;
+        for (int y = 0; y < frame->m_maxHeight; ++y) {
+            uint8_t *row_src = &tmp_buffer[(frame->m_maxHeight - y - 1) * lineWidth];
+            uint8_t *row_dst = &frame->m_rgb[y * lineWidth];
+
+            memcpy(row_dst, row_src, frame->m_lineWidth);
+        }
 
         encoder.submitFrame();
     } else {
@@ -230,7 +314,7 @@ bool opengl_renderer::init_recording() {
 
     // Encoder settings
     settings.hardwareEncoding = true;
-    settings.bitRate = 16000000;
+    settings.bitRate = 16000000; // 16 Mbits?
 
     const int VideoLengthSeconds = 10;
     const int FrameCount = VideoLengthSeconds * settings.frameRate;
@@ -245,6 +329,10 @@ bool opengl_renderer::stop_recording() {
     encoder.commit();
     encoder.stop();
 
+    if (tmp_buffer) {
+        delete[] tmp_buffer;
+    }
+    tmp_buffer = nullptr;
 #endif
     return true;
 }

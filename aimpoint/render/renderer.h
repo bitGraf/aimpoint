@@ -33,6 +33,8 @@ private:
     // video recording
 #if USE_DTV
     atg_dtv::Encoder encoder;
+
+    uint8 *tmp_buffer = nullptr;
 #endif
     bool init_recording();
     bool stop_recording();
