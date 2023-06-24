@@ -17,4 +17,7 @@ typedef std::int64_t int64;
 
 #endif
 
+// Disable by default
+#ifndef USE_DTV
 #define USE_DTV 0
+#endif

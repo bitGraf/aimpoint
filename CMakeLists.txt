@@ -32,10 +32,16 @@ add_subdirectory("deps/spdlog")
 add_subdirectory("deps/math_lib")
 
 # direct-to-video
-option(USE_DTV "Use Direct-To-Video library to save video" OFF) #OFF by default
-if(USE_DTV)
+option(USE_DTV_LIB "Include Direct-To-Video library to save video" OFF) #OFF by default
+option(USE_DTV "Enable DTV in the code" OFF) #OFF by default
+if(USE_DTV_LIB)
     add_subdirectory("deps/DTV")
-endif(USE_DTV)
+    if(USE_DTV)
+        add_compile_definitions("USE_DTV=1")
+    else()
+        add_compile_definitions("USE_DTV=0")
+    endif()
+endif(USE_DTV_LIB)
 
 
 ###### Application
@@ -65,11 +71,11 @@ add_executable( aimpoint
     ${SRC_DIR}/render/mesh.h
 )
 
-if(USE_DTV)
+if(USE_DTV_LIB)
     target_link_libraries( aimpoint ${OPENGL_LIBRARIES} "${SolverName}" imgui implot spdlog::spdlog laml direct-to-video)
 else()
     target_link_libraries( aimpoint ${OPENGL_LIBRARIES} "${SolverName}" imgui implot spdlog::spdlog laml)
-endif(USE_DTV)
+endif(USE_DTV_LIB)
 
 target_include_directories( aimpoint PRIVATE aimpoint "${CMAKE_SOURCE_DIR}/deps/DTV/include")
 if( MSVC )
@@ -85,4 +91,5 @@ if( MSVC )
 endif()
 
 
+unset(USE_DTV_LIB CACHE) # <---- this is the important!!
 unset(USE_DTV CACHE) # <---- this is the important!!

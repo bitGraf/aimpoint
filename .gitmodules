@@ -8,12 +8,12 @@
 [submodule "deps/implot/implot"]
 	path = deps/implot/implot
 	url = https://github.com/epezent/implot.git
-[submodule "deps\\GLFW"]
-	path = deps\\GLFW
+[submodule "deps/GLFW"]
+	path = deps/GLFW
 	url = https://github.com/glfw/glfw.git
-[submodule "deps\\math_lib"]
-	path = deps\\math_lib
+[submodule "deps/math_lib"]
+	path = deps/math_lib
 	url = https://github.com/bitGraf/math_lib.git
-[submodule "deps\\DTV"]
-	path = deps\\DTV
+[submodule "deps/DTV"]
+	path = deps/DTV
 	url = https://github.com/ange-yaghi/direct-to-video.git
