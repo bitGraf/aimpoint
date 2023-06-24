@@ -46,10 +46,10 @@ int aimpoint::run() {
                 sim_time += step_time;
                 accum_time -= step_time;
 
-                //if (sim_time >= .05) { 
-                //    done = true;
-                //    break; 
-                //}
+                if (sim_time >= 35.0) { 
+                    done = true;
+                    break; 
+                }
             }
         } else {
             double render_time = wall_time + 1.0/65.0;
@@ -70,7 +70,7 @@ int aimpoint::run() {
 }
 
 int aimpoint::init() {
-    simulation_rate = 200.0; // Hz
+    simulation_rate = 100.0; // Hz
     sim_frame = 0;
     real_time = true;
 
@@ -358,7 +358,7 @@ void aimpoint::step(double dt) {
     if (sim_frame % (cycles_per_second) == 0) {
         //spdlog::debug("[{0:0.3f}] simulation step", sim_time);
         double rot_KE = 0.5 * laml::dot(body2.state.ang_velocity*body2.inertia, body2.state.ang_velocity);
-        spdlog::debug("[{0:0.3f}] Rotational KE: {1:.2f} J", sim_time, rot_KE);
+        spdlog::debug("[{0:0.3f}] Rotational KE: {1:.3f} J", sim_time, rot_KE);
         //spdlog::info("t(s) = {0:4.1f}     alt(km) = {1:7.3f}     speed(m/s) = {2:7.3f}", 
         //             sim_time, laml::length(body.state.position)/1000.0, laml::length(body.state.velocity));
     }
