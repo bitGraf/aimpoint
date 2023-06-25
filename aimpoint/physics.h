@@ -31,7 +31,7 @@ struct simulation_body {
 
     void set_state(laml::Vec3_highp position, laml::Vec3_highp velocity, 
                    laml::Quat_highp orientation, laml::Vec3_highp ang_velocity);
-    //void calc_secondary_states();
+    void calc_energy();
 
     rigid_body_derivative calc_derivative(double t, const rigid_body_state* state);
     void base_major_step(double t, double dt);
@@ -49,11 +49,11 @@ struct simulation_body {
 public:
     // secondary states
     //laml::Vec3_highp momentum;
-    //laml::Quat_highp spin; // q dot
     //laml::Vec3_highp ang_momentum;
 
-    //double linear_KE;
-    //double rotational_KE;
+    double linear_KE;
+    double rotational_KE;
+    double truth_total_energy;
 
     // constants
     double mass;

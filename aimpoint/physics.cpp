@@ -108,6 +108,14 @@ void simulation_body::set_state(laml::Vec3_highp position, laml::Vec3_highp velo
 
     derivative.spin = calc_spin(ang_velocity, orientation);
     derivative.ang_acceleration = laml::Vec3_highp(0.0, 0.0, 0.0);
+
+    calc_energy();
+    truth_total_energy = linear_KE + rotational_KE;
+}
+
+void simulation_body::calc_energy() {
+    linear_KE     = 0.5 * laml::dot(mass*state.velocity,        state.velocity);
+    rotational_KE = 0.5 * laml::dot(inertia*state.ang_velocity, state.ang_velocity);
 }
 
 /* Operatores to create weighted sums of Derivatives (for certain integration stages) */
@@ -182,6 +190,8 @@ void simulation_body::base_major_step(double t, double dt) {
 
     //spdlog::trace("[{0:.5f}] major timestep  x={1:.5f}   v={2:.2f}   a={3:.2f}", t, state.position.x, state.velocity.x, ((net_force + force_func(&state, t))*inv_mass).x);
     //spdlog::trace("[{0:.5f}] major timestep  x={1:.2f}   y={2:.2f}   z={3:.2f}", t, state.ang_velocity.x, state.ang_velocity.y, state.ang_velocity.z);
+
+    calc_energy();
 }
 
 void simulation_body::base_minor_step(double t, double dt, rigid_body_derivative* minor_derivative, rigid_body_state* minor_state) {

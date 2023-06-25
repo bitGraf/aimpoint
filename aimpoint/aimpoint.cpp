@@ -9,6 +9,9 @@
 
 #include "imgui.h"
 
+// TMP for KEY_CODES!
+#include <GLFW/glfw3.h>
+
 int aimpoint::run() {
     if (init()) {
         // failed on initialization
@@ -20,19 +23,24 @@ int aimpoint::run() {
 
     wall_time = renderer.get_time();
     double accum_time = 0.0;
+    frame_time = 0.0;
 
     bool done = false;
     while(!done) {
         double new_time = renderer.get_time();
-        double frame_time = new_time - wall_time;
+        frame_time = new_time - wall_time;
         wall_time = new_time;
 
         accum_time += frame_time;
 
+        input.xvel = 0.0;
+        input.yvel = 0.0;
         renderer.poll_events();
         if (renderer.should_window_close()) {
             done = true;
         }
+        input.xvel /= frame_time;
+        input.yvel /= frame_time;
 
         if (real_time) {
             while (accum_time >= step_time) {
@@ -40,10 +48,10 @@ int aimpoint::run() {
                 sim_time += step_time;
                 accum_time -= step_time;
 
-                if (sim_time >= 50.0) { 
-                    done = true;
-                    break; 
-                }
+                //if (sim_time >= 250.0) { 
+                //    done = true;
+                //    break; 
+                //}
             }
         } else {
             double render_time = wall_time + 1.0/65.0;
@@ -70,19 +78,16 @@ int aimpoint::init() {
     sim_time = 0.0;
     wall_time = 0.0;
 
-    body.spring_constant = 100.0;
-    body.damping_constant = 0.25;
-    body.set_mass(0.1);
-    body.state.position.x = 1.0;
-    body.state.velocity.x = 0.0;
+    body.set_mass(1.0);
+    body.set_inertia(0.2, 0.3, 0.4);
+    body.state.ang_velocity.x = 4.0;
+    body.state.ang_velocity.y = 3.0;
+    body.state.ang_velocity.z = 5.0;
+    body.calc_energy();
+    body.truth_total_energy = body.linear_KE + body.rotational_KE;
 
-    body2.set_mass(1.0);
-    body2.set_inertia(0.2, 0.3, 0.4);
-    body2.state.ang_velocity.x = 0.5;
-    body2.state.ang_velocity.y = 10.0;
-    body2.state.ang_velocity.z = 0.5;
-
-    cam_pos = laml::Vec3(0.0f, 0.0f, 2.0f);
+    cam_orbit_point = laml::Vec3(0.0f, 0.0f, 0.0f);
+    cam_orbit_distance = 2.0f;
     yaw = 0;
     pitch = 0;
 
@@ -93,10 +98,6 @@ int aimpoint::init() {
     mesh.load_from_mesh_file("../data/blahaj.mesh");
 
     spdlog::info("Application intitialized");
-
-    // TODO: do these really need to be initialized like this?
-    //body.major_step(sim_time, 0.0);
-    body2.base_major_step(sim_time, 0.0);
 
     return 0;
 }
@@ -109,30 +110,30 @@ void aimpoint::step(double dt) {
         spdlog::info("[{0:0.3f}] simulation step", sim_time);
     }
 
-    //body.major_step(sim_time, dt);
     body.integrate_states(sim_time, dt);
-    body2.integrate_states(sim_time, dt);
     
     sim_frame++;
 }
 
 void aimpoint::render() {
+    if (input.mouse1) {
+        yaw   -= input.xvel * frame_time * 0.75f;
+        pitch -= input.yvel * frame_time * 0.50f;
+    }
+
+    laml::Vec3 cam_pos = cam_orbit_point + cam_orbit_distance*laml::Vec3(laml::cosd(pitch)*laml::sind(yaw), -laml::sind(pitch), laml::cosd(pitch)*laml::cosd(yaw));
     renderer.start_frame(cam_pos, yaw, pitch);
 
-    //{
-    //    laml::Vec3 render_pos(body.state.position);
-    //    laml::Quat render_rot(body.state.orientation);
-    //    renderer.draw_mesh(mesh, render_pos, render_rot);
-    //}
+    renderer.draw_mesh(mesh);
+
     {
-        laml::Vec3 render_pos(body2.state.position);
-        laml::Quat render_rot(body2.state.orientation);
+        laml::Vec3 render_pos(body.state.position);
+        laml::Quat render_rot(body.state.orientation);
         renderer.draw_mesh(mesh, render_pos, render_rot);
     }
 
     // Draw UI
     renderer.start_debug_UI();
-    static bool show_info_panel = false;
 
     const ImGuiIO& io = ImGui::GetIO();
     if (show_info_panel) {
@@ -140,16 +141,33 @@ void aimpoint::render() {
 
         ImGui::TextWrapped("Demonstrates the proper integration of Euler's Equations of Motion using body-fixed anguar velocites.");
 
-        double rot_KE = 0.5 * laml::dot(body2.state.ang_velocity*body2.inertia, body2.state.ang_velocity);
-        double lin_KE = 0.5 * body.mass * laml::dot(body.state.velocity, body.state.velocity);
-
         ImGui::Separator();
         ImGui::Text("System Energy:");
-        ImGui::Text("    Linear KE = %.3f J", lin_KE);
-        ImGui::Text("Rotational KE = %.3f J", rot_KE);
+        ImGui::Text("    Linear KE = %.3f J", body.linear_KE);
+        ImGui::Text("Rotational KE = %.3f J", body.rotational_KE);
+        ImGui::Separator();
+        ImGui::Text("Total KE         = %.3f J", body.linear_KE + body.rotational_KE);
+        ImGui::Text("Total KE (truth) = %.3f J", body.truth_total_energy);
+        ImGui::Text("Energy Loss      = %.3e J", body.truth_total_energy - (body.linear_KE + body.rotational_KE));
+        ImGui::Separator();
+
+        ImGui::Text("Body Rates:");
+        ImGui::Text("%6.3f %6.3f %6.3f", body.state.ang_velocity.x, body.state.ang_velocity.y, body.state.ang_velocity.z);
         ImGui::Separator();
 
         ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
+        ImGui::Text("xpos=%.1f   ypos=%.1f", input.xpos, input.ypos);
+        ImGui::Text("xvel=%.1f   yvel=%.1f", input.xvel, input.yvel);
+        ImGui::Separator();
+
+        ImGui::Text("Mouse Buttons:");
+        ImGui::Text("M1:%s    M2:%s", input.mouse1 ? "Pressed" : "Released", input.mouse2 ? "Pressed" : "Released");
+        ImGui::Separator();
+
+        ImGui::Text("Camera State:");
+        ImGui::Text("Yaw:%.2f    Pitch:%.2f", yaw, pitch);
+        ImGui::Separator();
+
         ImGui::End();
     }
 
@@ -168,8 +186,38 @@ void aimpoint::shutdown() {
 }
 
 void aimpoint::key_callback(int key, int scancode, int action, int mods) {
+    if (key == GLFW_KEY_I && action == GLFW_PRESS) {
+        show_info_panel = !show_info_panel;
+    }
+
+    if (key == GLFW_KEY_SPACE && action == GLFW_PRESS) {
+        real_time = !real_time;
+    }
 }
 
+void aimpoint::mouse_pos_callback(double xpos, double ypos) {
+    input.xvel += (xpos - input.xpos);
+    input.yvel += (ypos - input.ypos);
+
+    input.xpos = xpos;
+    input.ypos = ypos;
+}
+
+void aimpoint::mouse_button_callback(int button, int action, int mods) {
+    if (button == GLFW_MOUSE_BUTTON_1 && action == GLFW_PRESS) {
+        input.mouse1 = true;
+    }
+    if (button == GLFW_MOUSE_BUTTON_1 && action == GLFW_RELEASE) {
+        input.mouse1 = false;
+    }
+
+    if (button == GLFW_MOUSE_BUTTON_2 && action == GLFW_PRESS) {
+        input.mouse2 = true;
+    }
+    if (button == GLFW_MOUSE_BUTTON_2 && action == GLFW_RELEASE) {
+        input.mouse2 = false;
+    }
+}
 
 
 

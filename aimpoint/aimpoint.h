@@ -12,6 +12,8 @@ public:
     int run();
 
     void key_callback(int key, int scancode, int action, int mods);
+    void mouse_pos_callback(double xpos, double ypos);
+    void mouse_button_callback(int button, int action, int mods);
 
 private:
     int init();
@@ -26,6 +28,9 @@ private:
 
     double sim_time;
     double wall_time;
+    double frame_time;
+
+    bool show_info_panel = false;
 
     opengl_renderer renderer;
     triangle_mesh mesh;
@@ -33,9 +38,20 @@ private:
     // openGL handles
     uint32 shader;
 
-    mass_spring_damper body;
-    t_bar body2;
+    t_bar body;
 
-    laml::Vec3 cam_pos;
+    float cam_orbit_distance;
+    laml::Vec3 cam_orbit_point;
     float yaw, pitch;
+
+    struct {
+        double xpos = 0; 
+        double ypos = 0;
+
+        double xvel = 0; 
+        double yvel = 0;
+
+        bool mouse1 = false; 
+        bool mouse2 = false;
+    } input;
 };

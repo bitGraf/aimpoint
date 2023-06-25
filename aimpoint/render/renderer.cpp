@@ -14,6 +14,8 @@
 
 static void glfw_error_callback(int error, const char* description);
 static void glfw_key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
+static void glfw_cursor_pos_callback(GLFWwindow* window, double xpos, double ypos);
+static void glfw_mouse_button_callback(GLFWwindow* window, int button, int action, int mods);
 
 opengl_renderer::opengl_renderer() : raw_glfw_window(nullptr), 
                                      window_width(64), 
@@ -43,6 +45,8 @@ int32 opengl_renderer::init_gl_glfw(aimpoint* app_ptr, int32 width, int32 height
     }
 
     glfwSetKeyCallback(window, glfw_key_callback);
+    glfwSetCursorPosCallback(window, glfw_cursor_pos_callback);
+    glfwSetMouseButtonCallback(window, glfw_mouse_button_callback);
 
     glfwSetWindowUserPointer(window, app_ptr);
 
@@ -180,6 +184,16 @@ void glfw_key_callback(GLFWwindow* window, int key, int scancode, int action, in
     app->key_callback(key, scancode, action, mods);
 }
 
+void glfw_cursor_pos_callback(GLFWwindow* window, double xpos, double ypos) {
+    aimpoint* app = (aimpoint*)glfwGetWindowUserPointer(window);
+    app->mouse_pos_callback(xpos, ypos);
+}
+
+void glfw_mouse_button_callback(GLFWwindow* window, int button, int action, int mods) {
+    aimpoint* app = (aimpoint*)glfwGetWindowUserPointer(window);
+    app->mouse_button_callback(button, action, mods);
+}
+
 void opengl_renderer::poll_events() {
     glfwPollEvents();
 }
@@ -197,7 +211,7 @@ void opengl_renderer::start_frame(const laml::Vec3& cam_pos, float cam_yaw, floa
     glUseProgram(shader);
 
     laml::Mat4 cam_transform, view_matrix;
-    laml::transform::create_transform_translate(cam_transform, cam_pos);
+    laml::transform::create_transform(cam_transform, cam_yaw, cam_pitch, 0.0f, cam_pos);
     laml::transform::create_view_matrix_from_transform(view_matrix, cam_transform);
     int viewLocation = glGetUniformLocation(shader, "r_View");
     glUniformMatrix4fv(viewLocation, 1, GL_FALSE, view_matrix._data);

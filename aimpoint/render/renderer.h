@@ -21,7 +21,9 @@ struct opengl_renderer {
 
     void start_frame(const laml::Vec3& cam_pos, float cam_yaw, float cam_pitch);
     
-    void draw_mesh(const triangle_mesh& mesh, const laml::Vec3& position, const laml::Quat& orientation);
+    void draw_mesh(const triangle_mesh& mesh,
+                   const laml::Vec3& position = laml::Vec3(),
+                   const laml::Quat& orientation = laml::Quat());
 
     void start_debug_UI();
     void end_debug_UI();
