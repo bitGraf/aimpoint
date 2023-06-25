@@ -7,6 +7,7 @@
 #include <imgui.h>
 #include <backends/imgui_impl_glfw.h>
 #include <backends/imgui_impl_opengl3.h>
+#include <implot.h>
 
 #include "log.h"
 
@@ -136,6 +137,7 @@ int32 opengl_renderer::init_gl_glfw(aimpoint* app_ptr, int32 width, int32 height
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
+    ImPlot::CreateContext();
     ImGuiIO& io = ImGui::GetIO(); (void)io;
     io.IniFilename = "../data/imgui.ini";
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
@@ -162,6 +164,7 @@ void opengl_renderer::shutdown() {
     // Cleanup
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
+    ImPlot::DestroyContext();
     ImGui::DestroyContext();
 
     stop_recording();
@@ -294,12 +297,12 @@ bool opengl_renderer::init_recording() {
     settings.fname = "output.mp4";
 
     // Input dimensions
-    settings.inputWidth = 640;
-    settings.inputHeight = 480;
+    settings.inputWidth = window_width;
+    settings.inputHeight = window_height;
 
     // Output dimensions
-    settings.width = 640;
-    settings.height = 480;
+    settings.width = window_width;
+    settings.height = window_height;
 
     // Encoder settings
     settings.hardwareEncoding = true;

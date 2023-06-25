@@ -8,6 +8,7 @@
 #include <stdio.h>
 
 #include "imgui.h"
+#include "implot.h"
 
 // TMP for KEY_CODES!
 #include <GLFW/glfw3.h>
@@ -80,9 +81,9 @@ int aimpoint::init() {
 
     body.set_mass(1.0);
     body.set_inertia(0.2, 0.3, 0.4);
-    body.state.ang_velocity.x = 4.0;
-    body.state.ang_velocity.y = 3.0;
-    body.state.ang_velocity.z = 5.0;
+    body.state.ang_velocity.x = 0.5;
+    body.state.ang_velocity.y = 10.0;
+    body.state.ang_velocity.z = 0.5;
     body.calc_energy();
     body.truth_total_energy = body.linear_KE + body.rotational_KE;
 
@@ -91,7 +92,7 @@ int aimpoint::init() {
     yaw = 0;
     pitch = 0;
 
-    renderer.init_gl_glfw(this, 640, 480);
+    renderer.init_gl_glfw(this, 1280, 720);
 
     // Load mesh from file
     //mesh.load_from_mesh_file("../data/Cylinder.mesh");
@@ -116,7 +117,7 @@ void aimpoint::step(double dt) {
 }
 
 void aimpoint::render() {
-    if (input.mouse1) {
+    if (input.mouse2) {
         yaw   -= input.xvel * frame_time * 0.75f;
         pitch -= input.yvel * frame_time * 0.50f;
     }
@@ -171,6 +172,29 @@ void aimpoint::render() {
         ImGui::End();
     }
 
+    // Plots
+    w_t.add_point(sim_time);
+    w_x.add_point(body.state.ang_velocity.x);
+    w_y.add_point(body.state.ang_velocity.y);
+    w_z.add_point(body.state.ang_velocity.z);
+
+    ImGui::Begin("Body Rates");
+    double history = w_t.length * (1.0/60.0);
+    static ImPlotAxisFlags flags = ImPlotAxisFlags_NoTickLabels;
+    if (ImPlot::BeginPlot("##Scrolling")) {
+        ImPlot::SetupAxes(nullptr, nullptr, flags, flags);
+        ImPlot::SetupAxisLimits(ImAxis_X1,sim_time - history, sim_time, ImGuiCond_Always);
+        ImPlot::SetupAxisLimits(ImAxis_Y1,-10,10);
+        ImPlot::SetNextFillStyle(IMPLOT_AUTO_COL,0.5f);
+
+        ImPlot::PlotLine("Body X", w_t.data, w_x.data, w_t.length, 0, w_t.offset, sizeof(double));
+        ImPlot::PlotLine("Body Y", w_t.data, w_y.data, w_t.length, 0, w_t.offset, sizeof(double));
+        ImPlot::PlotLine("Body Z", w_t.data, w_z.data, w_t.length, 0, w_t.offset, sizeof(double));
+
+        ImPlot::EndPlot();
+    }
+    ImGui::End();
+
     renderer.end_debug_UI();
 
     renderer.end_frame();
@@ -192,6 +216,11 @@ void aimpoint::key_callback(int key, int scancode, int action, int mods) {
 
     if (key == GLFW_KEY_SPACE && action == GLFW_PRESS) {
         real_time = !real_time;
+    }
+
+    if (key == GLFW_KEY_R && action == GLFW_PRESS) {
+        yaw = 0.0;
+        pitch = 0.0;
     }
 }
 

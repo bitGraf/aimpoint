@@ -7,6 +7,32 @@
 #include "body_type/mass_spring_damper.h"
 #include "body_type/t_bar.h"
 
+const size_t num_seconds_history = 5;
+const size_t buffer_length = num_seconds_history * 60;
+
+template<typename T, size_t num_points>
+struct plot_signal {
+    plot_signal() : length(num_points) {
+        for (size_t n = 0; n < num_points; n++) {
+            data[n] = static_cast<T>(0);
+        }
+    }
+
+    void add_point(T value) {
+        data[offset] = value;
+
+        offset++;
+
+        if (offset == num_points)
+            offset = 0;
+    }
+
+    T data[num_points];
+
+    size_t offset = 0;
+    const size_t length;
+};
+
 struct aimpoint {
 public:
     int run();
@@ -35,9 +61,6 @@ private:
     opengl_renderer renderer;
     triangle_mesh mesh;
 
-    // openGL handles
-    uint32 shader;
-
     t_bar body;
 
     float cam_orbit_distance;
@@ -54,4 +77,10 @@ private:
         bool mouse1 = false; 
         bool mouse2 = false;
     } input;
+
+    // plotting
+    plot_signal<double, buffer_length> w_t;
+    plot_signal<double, buffer_length> w_x;
+    plot_signal<double, buffer_length> w_y;
+    plot_signal<double, buffer_length> w_z;
 };
