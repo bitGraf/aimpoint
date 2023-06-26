@@ -1,12 +1,14 @@
 #include "planet.h"
 
-planet::planet() {
+planet::planet() : mat_inertial_to_fixed(1.0f) {
 
 }
 
 void planet::load_mesh() {
     //mesh.load_from_mesh_file("../data/unit_sphere.mesh", equatorial_radius);
     mesh.load_from_mesh_file("../data/unit_sphere.mesh", 1.0f);
+
+    diffuse.load_texture_file("../data/earth.jpg");
 }
 
 void planet::update(double t, double dt) {
@@ -20,7 +22,9 @@ void planet::update(double t, double dt) {
     double sy = laml::sin(yaw);
 
     //inertial_to_fixed = laml::Mat3(cy, -sy, 0, 0, 0, 1, sy, cy, 0);
-    mat_inertial_to_fixed = laml::Mat3(cy, sy, 0, -sy, cy, 0, 0, 0, 1);
+    //mat_inertial_to_fixed = laml::Mat3(cy, sy, 0, -sy, cy, 0, 0, 0, 1);
+    mat_inertial_to_fixed = laml::Mat3(cy, -sy, 0, sy, cy, 0, 0, 0, 1);
+    mat_fixed_to_inertial = laml::transpose(mat_inertial_to_fixed);
 }
 
 vec3d planet::lla_to_fixed(double lat, double lon, double alt) {
@@ -41,5 +45,7 @@ vec3d planet::lla_to_fixed(double lat, double lon, double alt) {
 vec3d planet::fixed_to_inertial(vec3d pos_fixed) {
     double cy = laml::cos(yaw);
     double sy = laml::sin(yaw);
-    return vec3d(cy*pos_fixed.x - sy*pos_fixed.y, sy*pos_fixed.x + cy*pos_fixed.y, pos_fixed.z);
+    //return vec3d(cy*pos_fixed.x - sy*pos_fixed.y, sy*pos_fixed.x + cy*pos_fixed.y, pos_fixed.z);
+
+    return vec3d(laml::transform::transform_point(laml::transpose(mat_inertial_to_fixed), vec3f(pos_fixed)));
 }

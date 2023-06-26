@@ -2,6 +2,7 @@
 #include "defines.h"
 
 #include "mesh.h"
+#include "texture.h"
 
 // for recording
 #if USE_DTV
@@ -21,6 +22,7 @@ struct opengl_renderer {
 
     void start_frame(const laml::Vec3& cam_pos, float cam_yaw, float cam_pitch);
     
+    void bind_texture(const texture& tex);
     void draw_mesh(const triangle_mesh& mesh,
                    const laml::Vec3& position = laml::Vec3(),
                    const laml::Quat& orientation = laml::Quat(),

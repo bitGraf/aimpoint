@@ -88,6 +88,11 @@ int aimpoint::init() {
     //mesh.load_from_mesh_file("../data/t_bar.mesh");
     mesh.load_from_mesh_file("../data/blahaj.mesh", 0.01f);
     dot.load_from_mesh_file("../data/unit_sphere.mesh", 0.1f);
+    grid_tex.load_texture_file("../data/grid.png");
+
+    red_tex.load_texture_file("../data/red.png");
+    green_tex.load_texture_file("../data/green.png");
+    blue_tex.load_texture_file("../data/blue.png");
 
     earth.load_mesh();
 
@@ -125,21 +130,63 @@ void aimpoint::render() {
     if (input.q)     dot_pos.z -= frame_time;
     if (input.e)     dot_pos.z += frame_time;
 
+    if (earth.yaw > 90.0*laml::constants::deg2rad<double>) {
+        bool stop = true;
+    }
+
+    laml::Mat3 eci_to_render(0.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f);
     laml::Mat3 render_frame(1.0f);
-    if (render_frame_enum == 1) {
-        render_frame = earth.mat_inertial_to_fixed;
+    switch(render_frame_enum) {
+        case ECI: {
+            render_frame = eci_to_render;
+        } break;
+        case ECEF: {
+            render_frame = laml::mul(eci_to_render, earth.mat_inertial_to_fixed);
+        } break;
+        case RENDER: {
+            // ...
+        } break;
     }
 
     renderer.start_frame(cam_pos, yaw, pitch);
 
-    //renderer.draw_mesh(mesh);
-    renderer.draw_mesh(earth.mesh);
+    renderer.bind_texture(earth.diffuse);
+    renderer.draw_mesh(earth.mesh, laml::Vec3(0.0f), laml::transform::quat_from_mat(earth.mat_fixed_to_inertial), render_frame);
 
+    renderer.bind_texture(red_tex);
+    {
+        vec3f pos_eci(earth.fixed_to_inertial(earth.lla_to_fixed(0, 0, 0)));
+        renderer.draw_mesh(dot, pos_eci, laml::transform::quat_from_mat(earth.mat_fixed_to_inertial), render_frame);
+
+        pos_eci = vec3f((earth.lla_to_fixed(0, 0, 0)));
+        renderer.draw_mesh(dot, pos_eci, laml::Quat(), render_frame);
+    }
+    renderer.bind_texture(green_tex);
+    {
+        // Fixed
+        vec3f pos_eci(earth.fixed_to_inertial(earth.lla_to_fixed(0, 90, 0)));
+        renderer.draw_mesh(dot, pos_eci, laml::transform::quat_from_mat(earth.mat_fixed_to_inertial), render_frame);
+
+        // Inertial
+        pos_eci = vec3f((earth.lla_to_fixed(0, 90, 0)));
+        renderer.draw_mesh(dot, pos_eci, laml::Quat(), render_frame);
+    }
+    renderer.bind_texture(blue_tex);
+    {
+        //if (render_frame_enum == ECEF) {
+            vec3f pos_eci(earth.fixed_to_inertial(earth.lla_to_fixed(90, 0, 0)));
+            renderer.draw_mesh(dot, pos_eci, laml::transform::quat_from_mat(earth.mat_fixed_to_inertial), render_frame);
+        //} else {
+        //    vec3f pos_eci((earth.lla_to_fixed(90, 0, 0)));
+        //    renderer.draw_mesh(dot, pos_eci, laml::Quat(), render_frame);
+        //}
+    }
+
+
+    renderer.bind_texture(grid_tex);
     {
         vec3f pos_eci(earth.fixed_to_inertial(earth.lla_to_fixed(30, 0, 0)));
-        pos_eci = laml::transform::transform_point(render_frame, pos_eci);
-        laml::Vec3 render_pos(pos_eci.y, pos_eci.z, pos_eci.x);
-        renderer.draw_mesh(dot, render_pos);
+        renderer.draw_mesh(dot, pos_eci, laml::Quat(), render_frame);
     }
 
     // Draw UI
@@ -268,9 +315,17 @@ void aimpoint::key_callback(int key, int scancode, int action, int mods) {
     }
 
     if (key == GLFW_KEY_F && action == GLFW_RELEASE) {
-        render_frame_enum++;
-        if (render_frame_enum == 2)
-            render_frame_enum = 0;
+        switch(render_frame_enum) {
+            case ECI: {
+                render_frame_enum = ECEF;
+            } break;
+            case ECEF: {
+                render_frame_enum = ECI;
+            } break;
+            case RENDER: {
+                render_frame_enum = ECI;
+            } break;
+        }
     }
 }
 
@@ -314,6 +369,10 @@ int main(int argc, char** argv) {
 
     set_terminal_log_level(log_level::info);
     spdlog::info("Creating application...");
+
+    laml::Mat3 m(1, 2, 3, 4, 5, 6, 7, 8, 9);
+    laml::Vec3 v(1, 2, 3);
+    laml::transform::transform_point(m, v);
 
     app.run();
 

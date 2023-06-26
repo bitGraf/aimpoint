@@ -2,6 +2,7 @@
 #include "defines.h"
 
 #include "render/mesh.h"
+#include "render/texture.h"
 
 struct planet {
     planet();
@@ -13,6 +14,7 @@ struct planet {
     vec3d fixed_to_inertial(vec3d pos_fixed);
 
     triangle_mesh mesh;
+    texture diffuse;
 
 //private:
     // WGS-84 Earth
@@ -22,4 +24,5 @@ struct planet {
     double yaw = 0.0;                          // rad
 
     laml::Mat3 mat_inertial_to_fixed;
+    laml::Mat3 mat_fixed_to_inertial;
 };

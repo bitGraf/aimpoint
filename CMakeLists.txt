@@ -31,6 +31,9 @@ add_subdirectory("deps/spdlog")
 # math library
 add_subdirectory("deps/math_lib")
 
+# math library
+add_subdirectory("deps/stb")
+
 # direct-to-video
 option(USE_DTV_LIB "Include Direct-To-Video library to save video" OFF) #OFF by default
 option(USE_DTV "Enable DTV in the code" OFF) #OFF by default
@@ -60,6 +63,7 @@ add_executable( aimpoint
     ${SRC_DIR}/body_type/mass_spring_damper.cpp
     ${SRC_DIR}/render/renderer.cpp
     ${SRC_DIR}/render/mesh.cpp
+    ${SRC_DIR}/render/texture.cpp
 
     ${SRC_DIR}/aimpoint.h
     ${SRC_DIR}/log.h
@@ -71,12 +75,13 @@ add_executable( aimpoint
     ${SRC_DIR}/body_type/mass_spring_damper.h
     ${SRC_DIR}/render/renderer.h
     ${SRC_DIR}/render/mesh.h
+    ${SRC_DIR}/render/texture.h
 )
 
 if(USE_DTV_LIB)
-    target_link_libraries( aimpoint ${OPENGL_LIBRARIES} "${SolverName}" imgui implot spdlog::spdlog laml direct-to-video)
+    target_link_libraries( aimpoint ${OPENGL_LIBRARIES} "${SolverName}" imgui implot spdlog::spdlog stb laml direct-to-video)
 else()
-    target_link_libraries( aimpoint ${OPENGL_LIBRARIES} "${SolverName}" imgui implot spdlog::spdlog laml)
+    target_link_libraries( aimpoint ${OPENGL_LIBRARIES} "${SolverName}" imgui implot spdlog::spdlog stb laml)
 endif(USE_DTV_LIB)
 
 target_include_directories( aimpoint PRIVATE aimpoint "${CMAKE_SOURCE_DIR}/deps/DTV/include")

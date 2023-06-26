@@ -17,6 +17,13 @@ static void glfw_error_callback(int error, const char* description);
 static void glfw_key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
 static void glfw_cursor_pos_callback(GLFWwindow* window, double xpos, double ypos);
 static void glfw_mouse_button_callback(GLFWwindow* window, int button, int action, int mods);
+void APIENTRY openGL_debug_msg_callback(GLenum source,
+                                        GLenum type,
+                                        GLuint id,
+                                        GLenum severity,
+                                        GLsizei length,
+                                        const GLchar *message,
+                                        const void *userParam);
 
 opengl_renderer::opengl_renderer() : raw_glfw_window(nullptr), 
                                      window_width(64), 
@@ -54,6 +61,9 @@ int32 opengl_renderer::init_gl_glfw(aimpoint* app_ptr, int32 width, int32 height
     glfwMakeContextCurrent(window);
     gladLoadGL(glfwGetProcAddress);
 
+    
+    glDebugMessageCallback(openGL_debug_msg_callback, nullptr);
+
     glfwGetFramebufferSize(window, &window_width, &window_height);
     glViewport(0, 0, window_width, window_height);
 
@@ -65,13 +75,16 @@ int32 opengl_renderer::init_gl_glfw(aimpoint* app_ptr, int32 width, int32 height
     const char *vertexShaderSource = "#version 430 core\n"
                                      "layout (location = 0) in vec3 a_Position;\n"
                                      "layout (location = 1) in vec3 a_Normal;\n"
+                                     "layout (location = 2) in vec2 a_TexCoord;\n"
                                      "layout (location = 1) uniform mat4 r_View;\n"
                                      "layout (location = 2) uniform mat4 r_Projection;\n"
                                      "layout (location = 3) uniform mat4 r_Transform;\n"
                                      "out vec3 out_normal;\n"
+                                     "out vec2 out_texcoord;\n"
                                      "void main() {\n"
                                      "    gl_Position = r_Projection * r_View * r_Transform * vec4(a_Position, 1.0);\n"
                                      "    out_normal = vec3(r_Transform * vec4(a_Normal, 0.0f));\n"
+                                     "    out_texcoord = a_TexCoord;\n"
                                      "}\n";
 
     unsigned int vertexShader;
@@ -93,12 +106,16 @@ int32 opengl_renderer::init_gl_glfw(aimpoint* app_ptr, int32 width, int32 height
     const char *fragmentShaderSource = "#version 430 core\n"
                                        "out vec4 FragColor;\n"
                                        "in vec3 out_normal;\n"
+                                       "in vec2 out_texcoord;\n"
+                                       "uniform sampler2D diffuse_tex;\n"
                                        "void main()\n"
                                        "{\n"
                                        "   vec3 light_dir = normalize(vec3(1.0f, -5.0f, 3.0f));\n"
                                        "   vec3 color = vec3(.3333f, 0.4588f, .5418f);\n"
+                                       "   vec3 tex_color = texture(diffuse_tex, out_texcoord).rgb;\n"
                                        "   vec3 ambient = vec3(.15f, 0.15f, .15f);\n"
-                                       "   FragColor = vec4(ambient + dot(light_dir, out_normal) * color, 1.0f);\n"
+                                       "   FragColor = vec4(ambient + dot(light_dir, out_normal) * tex_color, 1.0f);\n"
+                                       "   FragColor = vec4(tex_color, 1.0f);\n"
                                        "}\0";
 
     unsigned int fragmentShader;
@@ -227,13 +244,21 @@ void opengl_renderer::start_frame(const laml::Vec3& cam_pos, float cam_yaw, floa
     glUniformMatrix4fv(projLocation, 1, GL_FALSE, projection_matrix._data);
 }
 
+void opengl_renderer::bind_texture(const texture& tex) {
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, tex.handle);
+}
+
 void opengl_renderer::draw_mesh(const triangle_mesh& mesh, 
                                 const laml::Vec3& position, 
                                 const laml::Quat& orientation,
                                 const laml::Mat3& render_frame) {
     laml::Mat4 transform_matrix;
     //laml::transform::create_transform_translate(transform_matrix, position);
-    laml::transform::create_transform(transform_matrix, orientation, position);
+    //transform_matrix = laml::mul(laml::Mat4(render_frame), transform_matrix);
+    laml::Quat r = laml::transform::quat_from_mat(render_frame);
+
+    laml::transform::create_transform(transform_matrix, laml::mul(r, orientation), laml::transform::transform_point(render_frame, position));
     int transformLocation = glGetUniformLocation(shader, "r_Transform");
     glUniformMatrix4fv(transformLocation, 1, GL_FALSE, transform_matrix._data);
 
@@ -330,4 +355,17 @@ bool opengl_renderer::stop_recording() {
     tmp_buffer = nullptr;
 #endif
     return true;
+}
+
+
+
+
+void APIENTRY openGL_debug_msg_callback(GLenum source,
+    GLenum type,
+    GLuint id,
+    GLenum severity,
+    GLsizei length,
+    const GLchar *message,
+    const void *userParam) {
+    spdlog::trace("OpenGL Message: {0}", message);
 }

@@ -117,15 +117,19 @@ bool triangle_mesh::load_from_mesh_file(const char* filename, float scale_factor
         vertex_file* vertices_file = (vertex_file*)malloc(num_verts[prim_idx]*sizeof(vertex_file));
         fread(vertices_file, sizeof(vertex_file), num_verts[prim_idx], fid);
 
-        float* vertices = (float*)malloc(num_verts[prim_idx]*6*sizeof(float));
+        const size_t num_attr = 8;
+        float* vertices = (float*)malloc(num_verts[prim_idx]*num_attr*sizeof(float));
         for (int n = 0; n < num_verts[prim_idx]; n++) {
-            vertices[n*6 + 0] = scale_factor*vertices_file[n].position.x;
-            vertices[n*6 + 1] = scale_factor*vertices_file[n].position.y;
-            vertices[n*6 + 2] = scale_factor*vertices_file[n].position.z;
+            vertices[n*num_attr + 0] = scale_factor*vertices_file[n].position.x;
+            vertices[n*num_attr + 1] = scale_factor*vertices_file[n].position.y;
+            vertices[n*num_attr + 2] = scale_factor*vertices_file[n].position.z;
 
-            vertices[n*6 + 3] = vertices_file[n].normal.x;
-            vertices[n*6 + 4] = vertices_file[n].normal.y;
-            vertices[n*6 + 5] = vertices_file[n].normal.z;
+            vertices[n*num_attr + 3] = vertices_file[n].normal.x;
+            vertices[n*num_attr + 4] = vertices_file[n].normal.y;
+            vertices[n*num_attr + 5] = vertices_file[n].normal.z;
+
+            vertices[n*num_attr + 6] = vertices_file[n].texcoord.x;
+            vertices[n*num_attr + 7] = vertices_file[n].texcoord.y;
         }
         free(vertices_file);
 
@@ -137,16 +141,19 @@ bool triangle_mesh::load_from_mesh_file(const char* filename, float scale_factor
         glBindVertexArray(VAO);
 
         glBindBuffer(GL_ARRAY_BUFFER, VBO);
-        glBufferData(GL_ARRAY_BUFFER, sizeof(float)*6*num_verts[prim_idx], vertices, GL_STATIC_DRAW);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(float)*num_attr*num_verts[prim_idx], vertices, GL_STATIC_DRAW);
 
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
         glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(uint32)*num_inds[prim_idx], indices, GL_STATIC_DRAW);
 
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, num_attr * sizeof(float), (void*)0);
         glEnableVertexAttribArray(0);
 
-        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3*sizeof(float)));
+        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, num_attr * sizeof(float), (void*)(3*sizeof(float)));
         glEnableVertexAttribArray(1);
+
+        glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, num_attr * sizeof(float), (void*)(6*sizeof(float)));
+        glEnableVertexAttribArray(2);
 
         glBindBuffer(GL_ARRAY_BUFFER, 0); 
         glBindVertexArray(0); 

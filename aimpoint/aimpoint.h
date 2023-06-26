@@ -33,6 +33,12 @@ struct plot_signal {
     const size_t length;
 };
 
+enum coordinate_frame : int {
+    ECI = 0,
+    ECEF = 1,
+    RENDER = 2,
+};
+
 struct aimpoint {
 public:
     int run();
@@ -60,7 +66,8 @@ private:
 
     opengl_renderer renderer;
     triangle_mesh mesh, dot;
-    uint32 render_frame_enum = 0;
+    texture grid_tex, red_tex, green_tex, blue_tex;
+    coordinate_frame render_frame_enum = ECI;
 
     vec3f dot_pos;
 
