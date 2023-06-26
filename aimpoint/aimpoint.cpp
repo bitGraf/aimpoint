@@ -46,7 +46,6 @@ int aimpoint::run() {
         if (real_time) {
             while (accum_time >= step_time) {
                 step(step_time);
-                sim_time += step_time;
                 accum_time -= step_time;
 
                 //if (sim_time >= 250.0) { 
@@ -58,7 +57,6 @@ int aimpoint::run() {
             double render_time = wall_time + 1.0/65.0;
             while (renderer.get_time() < render_time) {
                 step(step_time);
-                sim_time += step_time;
             }
         }
 
@@ -79,14 +77,6 @@ int aimpoint::init() {
     sim_time = 0.0;
     wall_time = 0.0;
 
-    body.set_mass(1.0);
-    body.set_inertia(0.2, 0.3, 0.4);
-    body.state.ang_velocity.x = 0.5;
-    body.state.ang_velocity.y = 10.0;
-    body.state.ang_velocity.z = 0.5;
-    body.calc_energy();
-    body.truth_total_energy = body.linear_KE + body.rotational_KE;
-
     cam_orbit_point = laml::Vec3(0.0f, 0.0f, 0.0f);
     cam_orbit_distance = 2.0f;
     yaw = 0;
@@ -95,8 +85,11 @@ int aimpoint::init() {
     renderer.init_gl_glfw(this, 1280, 720);
 
     // Load mesh from file
-    //mesh.load_from_mesh_file("../data/Cylinder.mesh");
-    mesh.load_from_mesh_file("../data/blahaj.mesh");
+    //mesh.load_from_mesh_file("../data/t_bar.mesh");
+    mesh.load_from_mesh_file("../data/blahaj.mesh", 0.01f);
+    dot.load_from_mesh_file("../data/unit_sphere.mesh", 0.1f);
+
+    earth.load_mesh();
 
     spdlog::info("Application intitialized");
 
@@ -111,8 +104,9 @@ void aimpoint::step(double dt) {
         spdlog::info("[{0:0.3f}] simulation step", sim_time);
     }
 
-    body.integrate_states(sim_time, dt);
+    earth.update(sim_time, dt);
     
+    sim_time += dt;
     sim_frame++;
 }
 
@@ -123,14 +117,29 @@ void aimpoint::render() {
     }
 
     laml::Vec3 cam_pos = cam_orbit_point + cam_orbit_distance*laml::Vec3(laml::cosd(pitch)*laml::sind(yaw), -laml::sind(pitch), laml::cosd(pitch)*laml::cosd(yaw));
+
+    if (input.up)    dot_pos.y += frame_time;
+    if (input.down)  dot_pos.y -= frame_time;
+    if (input.left)  dot_pos.x -= frame_time;
+    if (input.right) dot_pos.x += frame_time;
+    if (input.q)     dot_pos.z -= frame_time;
+    if (input.e)     dot_pos.z += frame_time;
+
+    laml::Mat3 render_frame(1.0f);
+    if (render_frame_enum == 1) {
+        render_frame = earth.mat_inertial_to_fixed;
+    }
+
     renderer.start_frame(cam_pos, yaw, pitch);
 
-    renderer.draw_mesh(mesh);
+    //renderer.draw_mesh(mesh);
+    renderer.draw_mesh(earth.mesh);
 
     {
-        laml::Vec3 render_pos(body.state.position);
-        laml::Quat render_rot(body.state.orientation);
-        renderer.draw_mesh(mesh, render_pos, render_rot);
+        vec3f pos_eci(earth.fixed_to_inertial(earth.lla_to_fixed(30, 0, 0)));
+        pos_eci = laml::transform::transform_point(render_frame, pos_eci);
+        laml::Vec3 render_pos(pos_eci.y, pos_eci.z, pos_eci.x);
+        renderer.draw_mesh(dot, render_pos);
     }
 
     // Draw UI
@@ -138,23 +147,7 @@ void aimpoint::render() {
 
     const ImGuiIO& io = ImGui::GetIO();
     if (show_info_panel) {
-        ImGui::Begin("Spinning T-Handle");
-
-        ImGui::TextWrapped("Demonstrates the proper integration of Euler's Equations of Motion using body-fixed anguar velocites.");
-
-        ImGui::Separator();
-        ImGui::Text("System Energy:");
-        ImGui::Text("    Linear KE = %.3f J", body.linear_KE);
-        ImGui::Text("Rotational KE = %.3f J", body.rotational_KE);
-        ImGui::Separator();
-        ImGui::Text("Total KE         = %.3f J", body.linear_KE + body.rotational_KE);
-        ImGui::Text("Total KE (truth) = %.3f J", body.truth_total_energy);
-        ImGui::Text("Energy Loss      = %.3e J", body.truth_total_energy - (body.linear_KE + body.rotational_KE));
-        ImGui::Separator();
-
-        ImGui::Text("Body Rates:");
-        ImGui::Text("%6.3f %6.3f %6.3f", body.state.ang_velocity.x, body.state.ang_velocity.y, body.state.ang_velocity.z);
-        ImGui::Separator();
+        ImGui::Begin("Simulation Info");
 
         ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
         ImGui::Text("xpos=%.1f   ypos=%.1f", input.xpos, input.ypos);
@@ -167,11 +160,19 @@ void aimpoint::render() {
 
         ImGui::Text("Camera State:");
         ImGui::Text("Yaw:%.2f    Pitch:%.2f", yaw, pitch);
+        ImGui::Text("[%.1f, %.1f, %.1f]", cam_pos.x, cam_pos.y, cam_pos.z);
+        ImGui::Text("[%.1f, %.1f, %.1f]", dot_pos.x, dot_pos.y, dot_pos.z);
+        ImGui::Separator();
+
+        ImGui::Text("Earth State:");
+        ImGui::Text("Yaw:%.2f", earth.yaw*laml::constants::rad2deg<double>);
+        ImGui::Text("Rendering Frame: %s", render_frame_enum == 0 ? "Inertial" : "Fixed");
         ImGui::Separator();
 
         ImGui::End();
     }
 
+#if 0
     // Plots
     w_t.add_point(sim_time);
     w_x.add_point(body.state.ang_velocity.x);
@@ -194,6 +195,7 @@ void aimpoint::render() {
         ImPlot::EndPlot();
     }
     ImGui::End();
+#endif
 
     renderer.end_debug_UI();
 
@@ -221,6 +223,54 @@ void aimpoint::key_callback(int key, int scancode, int action, int mods) {
     if (key == GLFW_KEY_R && action == GLFW_PRESS) {
         yaw = 0.0;
         pitch = 0.0;
+    }
+
+    if (key == GLFW_KEY_UP && action == GLFW_PRESS) {
+        input.up = true;
+    }
+    if (key == GLFW_KEY_UP && action == GLFW_RELEASE) {
+        input.up = false;
+    }
+
+    if (key == GLFW_KEY_DOWN && action == GLFW_PRESS) {
+        input.down = true;
+    }
+    if (key == GLFW_KEY_DOWN && action == GLFW_RELEASE) {
+        input.down = false;
+    }
+
+    if (key == GLFW_KEY_LEFT && action == GLFW_PRESS) {
+        input.left = true;
+    }
+    if (key == GLFW_KEY_LEFT && action == GLFW_RELEASE) {
+        input.left = false;
+    }
+
+    if (key == GLFW_KEY_RIGHT && action == GLFW_PRESS) {
+        input.right = true;
+    }
+    if (key == GLFW_KEY_RIGHT && action == GLFW_RELEASE) {
+        input.right = false;
+    }
+
+    if (key == GLFW_KEY_Q && action == GLFW_PRESS) {
+        input.q = true;
+    }
+    if (key == GLFW_KEY_Q && action == GLFW_RELEASE) {
+        input.q = false;
+    }
+
+    if (key == GLFW_KEY_E && action == GLFW_PRESS) {
+        input.e = true;
+    }
+    if (key == GLFW_KEY_E && action == GLFW_RELEASE) {
+        input.e = false;
+    }
+
+    if (key == GLFW_KEY_F && action == GLFW_RELEASE) {
+        render_frame_enum++;
+        if (render_frame_enum == 2)
+            render_frame_enum = 0;
     }
 }
 

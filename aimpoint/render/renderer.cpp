@@ -227,7 +227,10 @@ void opengl_renderer::start_frame(const laml::Vec3& cam_pos, float cam_yaw, floa
     glUniformMatrix4fv(projLocation, 1, GL_FALSE, projection_matrix._data);
 }
 
-void opengl_renderer::draw_mesh(const triangle_mesh& mesh, const laml::Vec3& position, const laml::Quat& orientation) {
+void opengl_renderer::draw_mesh(const triangle_mesh& mesh, 
+                                const laml::Vec3& position, 
+                                const laml::Quat& orientation,
+                                const laml::Mat3& render_frame) {
     laml::Mat4 transform_matrix;
     //laml::transform::create_transform_translate(transform_matrix, position);
     laml::transform::create_transform(transform_matrix, orientation, position);

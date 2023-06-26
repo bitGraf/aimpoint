@@ -9,7 +9,7 @@ struct triangle_mesh {
         laml::Vec3 normal;
     };
 
-    bool load_from_mesh_file(const char* filename);
+    bool load_from_mesh_file(const char* filename, float scale_factor = 1.0f);
 
 private:
     uint16 num_prims = 0;

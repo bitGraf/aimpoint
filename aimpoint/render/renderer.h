@@ -23,7 +23,8 @@ struct opengl_renderer {
     
     void draw_mesh(const triangle_mesh& mesh,
                    const laml::Vec3& position = laml::Vec3(),
-                   const laml::Quat& orientation = laml::Quat());
+                   const laml::Quat& orientation = laml::Quat(),
+                   const laml::Mat3& render_frame = laml::Mat3());
 
     void start_debug_UI();
     void end_debug_UI();

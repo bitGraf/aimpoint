@@ -12,7 +12,7 @@ triangle_mesh::~triangle_mesh() {
     free(mat_idxs);
 }
 
-bool triangle_mesh::load_from_mesh_file(const char* filename) {
+bool triangle_mesh::load_from_mesh_file(const char* filename, float scale_factor) {
     FILE* fid = fopen(filename, "rb");
 
     //// Load mesh from file
@@ -117,12 +117,11 @@ bool triangle_mesh::load_from_mesh_file(const char* filename) {
         vertex_file* vertices_file = (vertex_file*)malloc(num_verts[prim_idx]*sizeof(vertex_file));
         fread(vertices_file, sizeof(vertex_file), num_verts[prim_idx], fid);
 
-        float global_scale = 0.01f;
         float* vertices = (float*)malloc(num_verts[prim_idx]*6*sizeof(float));
         for (int n = 0; n < num_verts[prim_idx]; n++) {
-            vertices[n*6 + 0] = global_scale*vertices_file[n].position.x;
-            vertices[n*6 + 1] = global_scale*vertices_file[n].position.y;
-            vertices[n*6 + 2] = global_scale*vertices_file[n].position.z;
+            vertices[n*6 + 0] = scale_factor*vertices_file[n].position.x;
+            vertices[n*6 + 1] = scale_factor*vertices_file[n].position.y;
+            vertices[n*6 + 2] = scale_factor*vertices_file[n].position.z;
 
             vertices[n*6 + 3] = vertices_file[n].normal.x;
             vertices[n*6 + 4] = vertices_file[n].normal.y;

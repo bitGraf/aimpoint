@@ -17,6 +17,9 @@ typedef std::int64_t int64;
 
 #endif
 
+typedef laml::Vec3 vec3f;
+typedef laml::Vec3_highp vec3d;
+
 // Disable by default
 #ifndef USE_DTV
 #define USE_DTV 0

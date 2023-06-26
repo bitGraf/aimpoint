@@ -3,9 +3,9 @@
 
 #include "render/renderer.h"
 #include "render/mesh.h"
+#include "physics.h"
 
-#include "body_type/mass_spring_damper.h"
-#include "body_type/t_bar.h"
+#include "planet.h"
 
 const size_t num_seconds_history = 5;
 const size_t buffer_length = num_seconds_history * 60;
@@ -59,9 +59,12 @@ private:
     bool show_info_panel = false;
 
     opengl_renderer renderer;
-    triangle_mesh mesh;
+    triangle_mesh mesh, dot;
+    uint32 render_frame_enum = 0;
 
-    t_bar body;
+    vec3f dot_pos;
+
+    planet earth;
 
     float cam_orbit_distance;
     laml::Vec3 cam_orbit_point;
@@ -76,6 +79,13 @@ private:
 
         bool mouse1 = false; 
         bool mouse2 = false;
+
+        bool up = false;
+        bool down = false;
+        bool left = false;
+        bool right = false;
+        bool q = false;
+        bool e = false;
     } input;
 
     // plotting
