@@ -4,6 +4,7 @@
 #include "render/renderer.h"
 #include "render/mesh.h"
 #include "physics.h"
+#include "body_type/rocket.h"
 
 #include "planet.h"
 
@@ -25,6 +26,14 @@ struct plot_signal {
 
         if (offset == num_points)
             offset = 0;
+    }
+
+    T get_avg() {
+        T sum = 0;
+        for (size_t n = 0; n < num_points; n++) {
+            sum = sum + data[n];
+        }
+        return sum / static_cast<T>(num_points);
     }
 
     T data[num_points];
@@ -72,6 +81,7 @@ private:
     vec3f dot_pos;
 
     planet earth;
+    rocket body;
 
     float cam_orbit_distance;
     laml::Vec3 cam_orbit_point;
@@ -100,4 +110,6 @@ private:
     plot_signal<double, buffer_length> w_x;
     plot_signal<double, buffer_length> w_y;
     plot_signal<double, buffer_length> w_z;
+
+    plot_signal<double, buffer_length> sim_scale_history;
 };

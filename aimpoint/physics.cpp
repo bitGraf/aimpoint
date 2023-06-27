@@ -174,7 +174,7 @@ rigid_body_derivative simulation_body::calc_derivative(double t_n, const rigid_b
 }
 
 void simulation_body::base_major_step(double t, double dt) {
-    major_step(t, dt);
+    //major_step(t, dt);
 
     t = t + dt;
 
@@ -195,7 +195,7 @@ void simulation_body::base_major_step(double t, double dt) {
 }
 
 void simulation_body::base_minor_step(double t, double dt, rigid_body_derivative* minor_derivative, rigid_body_state* minor_state) {
-    minor_step(t, dt, minor_derivative, minor_state);
+    //minor_step(t, dt, minor_derivative, minor_state);
 
     t = t + dt;
 
@@ -218,10 +218,13 @@ void simulation_body::apply_force(laml::Vec3_highp force, laml::Vec3_highp locat
     //       is location in body-frame or world-frame?
     //net_force  = net_force  + force;
     //net_moment = net_moment + laml::cross(location, force);
+
+    net_force = net_force + force;
 }
 
 void simulation_body::integrate_states(double t, double dt) {
     const int8 integration_mode = 3;
+    major_step(t, dt);
 
     switch(integration_mode) {
         case 1: { // ode1 - Euler Method

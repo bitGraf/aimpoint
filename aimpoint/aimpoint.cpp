@@ -48,7 +48,7 @@ int aimpoint::run() {
                 step(step_time);
                 accum_time -= step_time;
 
-                //if (sim_time >= 250.0) { 
+                //if (sim_time >= 10.0) { 
                 //    done = true;
                 //    break; 
                 //}
@@ -78,16 +78,16 @@ int aimpoint::init() {
     wall_time = 0.0;
 
     cam_orbit_point = laml::Vec3(0.0f, 0.0f, 0.0f);
-    cam_orbit_distance = 2.0f;
-    yaw = 0;
-    pitch = 0;
+    cam_orbit_distance = 2.0f*earth.equatorial_radius;
+    yaw = -65;
+    pitch = -15;
 
-    renderer.init_gl_glfw(this, 1280, 720);
+    renderer.init_gl_glfw(this, 800, 600);
 
     // Load mesh from file
     //mesh.load_from_mesh_file("../data/t_bar.mesh");
     mesh.load_from_mesh_file("../data/blahaj.mesh", 0.01f);
-    dot.load_from_mesh_file("../data/unit_sphere.mesh", 0.1f);
+    dot.load_from_mesh_file("../data/unit_sphere.mesh", 100000.0f);
     grid_tex.load_texture_file("../data/grid.png");
 
     red_tex.load_texture_file("../data/red.png");
@@ -96,6 +96,7 @@ int aimpoint::init() {
 
     earth.load_mesh();
 
+    body.launch(&earth);
     spdlog::info("Application intitialized");
 
     return 0;
@@ -104,12 +105,13 @@ int aimpoint::init() {
 void aimpoint::step(double dt) {
     //spdlog::trace("[{0:0.3f}] simulation step", sim_time);
 
-    int64 cycles_per_second = (int64)simulation_rate;
-    if (sim_frame % (cycles_per_second) == 0) {
-        spdlog::info("[{0:0.3f}] simulation step", sim_time);
-    }
+    //int64 cycles_per_second = (int64)simulation_rate;
+    //if (sim_frame % (cycles_per_second) == 0) {
+    //    spdlog::info("[{0:0.3f}] simulation step", sim_time);
+    //}
 
     earth.update(sim_time, dt);
+    body.integrate_states(sim_time, dt);
     
     sim_time += dt;
     sim_frame++;
@@ -182,12 +184,15 @@ void aimpoint::render() {
         //}
     }
 
-
     renderer.bind_texture(grid_tex);
-    {
-        vec3f pos_eci(earth.fixed_to_inertial(earth.lla_to_fixed(30, 0, 0)));
-        renderer.draw_mesh(dot, pos_eci, laml::Quat(), render_frame);
-    }
+    renderer.draw_mesh(dot, body.state.position, body.state.orientation, render_frame);
+    //vec3d launch_eci = earth.fixed_to_inertial(earth.lla_to_fixed(28.3922, -80.6077, 0.0), 0.0);
+    //for (int n = 0; n < 5; n++) {
+    //    vec3d pos_lci(0.0, 0.0, -0.2*n);
+    //    vec3d pos_eci = launch_eci + laml::transform::transform_point(lci_2_eci, pos_lci);
+    //
+    //    renderer.draw_mesh(dot, pos_eci, laml::Quat(), render_frame);
+    //}
 
     // Draw UI
     renderer.start_debug_UI();
@@ -196,14 +201,20 @@ void aimpoint::render() {
     if (show_info_panel) {
         ImGui::Begin("Simulation Info");
 
+        static uint64 last_frames = 0;
+        double steps_per_second = (double)(sim_frame - last_frames);
+        last_frames = sim_frame;
+        double sim_scale = io.Framerate * steps_per_second * (1.0/simulation_rate);
+        sim_scale_history.add_point(sim_scale);
         ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
-        ImGui::Text("xpos=%.1f   ypos=%.1f", input.xpos, input.ypos);
-        ImGui::Text("xvel=%.1f   yvel=%.1f", input.xvel, input.yvel);
+        ImGui::Text("Sim Scale: %5.1fX", sim_scale_history.get_avg());
+        //ImGui::Text("xpos=%.1f   ypos=%.1f", input.xpos, input.ypos);
+        //ImGui::Text("xvel=%.1f   yvel=%.1f", input.xvel, input.yvel);
         ImGui::Separator();
 
-        ImGui::Text("Mouse Buttons:");
-        ImGui::Text("M1:%s    M2:%s", input.mouse1 ? "Pressed" : "Released", input.mouse2 ? "Pressed" : "Released");
-        ImGui::Separator();
+        //ImGui::Text("Mouse Buttons:");
+        //ImGui::Text("M1:%s    M2:%s", input.mouse1 ? "Pressed" : "Released", input.mouse2 ? "Pressed" : "Released");
+        //ImGui::Separator();
 
         ImGui::Text("Camera State:");
         ImGui::Text("Yaw:%.2f    Pitch:%.2f", yaw, pitch);
@@ -214,6 +225,13 @@ void aimpoint::render() {
         ImGui::Text("Earth State:");
         ImGui::Text("Yaw:%.2f", earth.yaw*laml::constants::rad2deg<double>);
         ImGui::Text("Rendering Frame: %s", render_frame_enum == 0 ? "Inertial" : "Fixed");
+        ImGui::Separator();
+
+        ImGui::Text("Rocket State:");
+        ImGui::Text("Pos: [%.2f, %.2f, %.2f] km", body.state.position.x/1000.0, body.state.position.y/1000.0, body.state.position.z/1000.0);
+        ImGui::Text("Vel: [%.2f, %.2f, %.2f] m/s", body.state.velocity.x, body.state.velocity.y, body.state.velocity.z);
+        ImGui::Text("Acc: [%.2f, %.2f, %.2f] m/s^2", body.derivative.acceleration.x, body.derivative.acceleration.y, body.derivative.acceleration.z);
+        //ImGui::Text("Rendering Frame: %s", render_frame_enum == 0 ? "Inertial" : "Fixed");
         ImGui::Separator();
 
         ImGui::End();

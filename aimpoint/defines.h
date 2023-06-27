@@ -20,6 +20,9 @@ typedef std::int64_t int64;
 typedef laml::Vec3 vec3f;
 typedef laml::Vec3_highp vec3d;
 
+typedef laml::Mat3 mat3f;
+typedef laml::Mat3_highp mat3d;
+
 // Disable by default
 #ifndef USE_DTV
 #define USE_DTV 0
