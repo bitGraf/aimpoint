@@ -97,6 +97,8 @@ int aimpoint::init() {
     earth.load_mesh();
 
     body.launch(&earth);
+    lci2eci = body.LCI2ECI;
+    eci2lci = laml::transpose(lci2eci);
     spdlog::info("Application intitialized");
 
     return 0;
@@ -123,61 +125,75 @@ void aimpoint::render() {
         pitch -= input.yvel * frame_time * 0.50f;
     }
 
-    laml::Vec3 cam_pos = cam_orbit_point + cam_orbit_distance*laml::Vec3(laml::cosd(pitch)*laml::sind(yaw), -laml::sind(pitch), laml::cosd(pitch)*laml::cosd(yaw));
-
-    if (input.up)    dot_pos.y += frame_time;
-    if (input.down)  dot_pos.y -= frame_time;
-    if (input.left)  dot_pos.x -= frame_time;
-    if (input.right) dot_pos.x += frame_time;
-    if (input.q)     dot_pos.z -= frame_time;
-    if (input.e)     dot_pos.z += frame_time;
-
     if (earth.yaw > 90.0*laml::constants::deg2rad<double>) {
         bool stop = true;
     }
 
     laml::Mat3 eci_to_render(0.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f);
+    laml::Mat3 lci_to_render(1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, -1.0f, 0.0f);
     laml::Mat3 render_frame(1.0f);
+    float zoom_level = 1.0f;
     switch(render_frame_enum) {
         case ECI: {
             render_frame = eci_to_render;
+            cam_orbit_point = vec3f(0.0f);
         } break;
         case ECEF: {
             render_frame = laml::mul(eci_to_render, earth.mat_inertial_to_fixed);
+            cam_orbit_point = vec3f(0.0f);
         } break;
-        case RENDER: {
-            // ...
+        case LCI: {
+            mat3f _eci2lci(eci2lci.c_11, eci2lci.c_21, eci2lci.c_31,
+                           eci2lci.c_12, eci2lci.c_22, eci2lci.c_32,
+                           eci2lci.c_13, eci2lci.c_23, eci2lci.c_33);
+            render_frame = laml::mul(lci_to_render, _eci2lci);
+            cam_orbit_point = vec3f(0.0f, earth.equatorial_radius, 0.0f);
+            zoom_level = 0.25f;
+        } break;
+        case LCF: {
+            mat3f _eci2lci(eci2lci.c_11, eci2lci.c_21, eci2lci.c_31,
+                           eci2lci.c_12, eci2lci.c_22, eci2lci.c_32,
+                           eci2lci.c_13, eci2lci.c_23, eci2lci.c_33);
+            render_frame = laml::mul(lci_to_render, laml::mul(_eci2lci, earth.mat_inertial_to_fixed));
+            cam_orbit_point = vec3f(0.0f, earth.equatorial_radius, 0.0f);
+            zoom_level = 0.25f;
         } break;
     }
 
-    renderer.start_frame(cam_pos, yaw, pitch);
+    laml::Vec3 cam_pos = cam_orbit_point + 
+                         zoom_level*cam_orbit_distance*laml::Vec3(
+                            laml::cosd(pitch)*laml::sind(yaw), 
+                           -laml::sind(pitch), 
+                            laml::cosd(pitch)*laml::cosd(yaw));
+
+    renderer.start_frame(cam_pos, yaw, pitch, render_frame);
 
     renderer.bind_texture(earth.diffuse);
-    renderer.draw_mesh(earth.mesh, laml::Vec3(0.0f), laml::transform::quat_from_mat(earth.mat_fixed_to_inertial), render_frame);
+    renderer.draw_mesh(earth.mesh, laml::Vec3(0.0f), laml::transform::quat_from_mat(earth.mat_fixed_to_inertial));
 
     renderer.bind_texture(red_tex);
     {
         vec3f pos_eci(earth.fixed_to_inertial(earth.lla_to_fixed(0, 0, 0)));
-        renderer.draw_mesh(dot, pos_eci, laml::transform::quat_from_mat(earth.mat_fixed_to_inertial), render_frame);
+        renderer.draw_mesh(dot, pos_eci, laml::transform::quat_from_mat(earth.mat_fixed_to_inertial));
 
         pos_eci = vec3f((earth.lla_to_fixed(0, 0, 0)));
-        renderer.draw_mesh(dot, pos_eci, laml::Quat(), render_frame);
+        renderer.draw_mesh(dot, pos_eci, laml::Quat());
     }
     renderer.bind_texture(green_tex);
     {
         // Fixed
         vec3f pos_eci(earth.fixed_to_inertial(earth.lla_to_fixed(0, 90, 0)));
-        renderer.draw_mesh(dot, pos_eci, laml::transform::quat_from_mat(earth.mat_fixed_to_inertial), render_frame);
+        renderer.draw_mesh(dot, pos_eci, laml::transform::quat_from_mat(earth.mat_fixed_to_inertial));
 
         // Inertial
         pos_eci = vec3f((earth.lla_to_fixed(0, 90, 0)));
-        renderer.draw_mesh(dot, pos_eci, laml::Quat(), render_frame);
+        renderer.draw_mesh(dot, pos_eci, laml::Quat());
     }
     renderer.bind_texture(blue_tex);
     {
         //if (render_frame_enum == ECEF) {
             vec3f pos_eci(earth.fixed_to_inertial(earth.lla_to_fixed(90, 0, 0)));
-            renderer.draw_mesh(dot, pos_eci, laml::transform::quat_from_mat(earth.mat_fixed_to_inertial), render_frame);
+            renderer.draw_mesh(dot, pos_eci, laml::transform::quat_from_mat(earth.mat_fixed_to_inertial));
         //} else {
         //    vec3f pos_eci((earth.lla_to_fixed(90, 0, 0)));
         //    renderer.draw_mesh(dot, pos_eci, laml::Quat(), render_frame);
@@ -185,7 +201,7 @@ void aimpoint::render() {
     }
 
     renderer.bind_texture(grid_tex);
-    renderer.draw_mesh(dot, body.state.position, body.state.orientation, render_frame);
+    renderer.draw_mesh(dot, body.state.position, body.state.orientation);
     //vec3d launch_eci = earth.fixed_to_inertial(earth.lla_to_fixed(28.3922, -80.6077, 0.0), 0.0);
     //for (int n = 0; n < 5; n++) {
     //    vec3d pos_lci(0.0, 0.0, -0.2*n);
@@ -198,6 +214,32 @@ void aimpoint::render() {
     renderer.start_debug_UI();
 
     const ImGuiIO& io = ImGui::GetIO();
+
+    //ImGui::SetNextWindowBgAlpha(0.0f);
+    ImGui::Begin(".", NULL, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
+    switch(render_frame_enum) {
+        case ECI:
+        case ECEF: {
+            ImGui::Text("Earth-Centered");
+        } break;
+        case LCI:
+        case LCF: {
+            ImGui::Text("Launch-Centered");
+        } break;
+    }
+    ImGui::SameLine();
+    switch(render_frame_enum) {
+        case ECI:
+        case LCI: {
+            ImGui::Text("Inertial");
+        } break;
+        case ECEF:
+        case LCF: {
+            ImGui::Text("Fixed");
+        } break;
+    }
+    ImGui::End();
+
     if (show_info_panel) {
         ImGui::Begin("Simulation Info");
 
@@ -219,12 +261,11 @@ void aimpoint::render() {
         ImGui::Text("Camera State:");
         ImGui::Text("Yaw:%.2f    Pitch:%.2f", yaw, pitch);
         ImGui::Text("[%.1f, %.1f, %.1f]", cam_pos.x, cam_pos.y, cam_pos.z);
-        ImGui::Text("[%.1f, %.1f, %.1f]", dot_pos.x, dot_pos.y, dot_pos.z);
         ImGui::Separator();
 
         ImGui::Text("Earth State:");
         ImGui::Text("Yaw:%.2f", earth.yaw*laml::constants::rad2deg<double>);
-        ImGui::Text("Rendering Frame: %s", render_frame_enum == 0 ? "Inertial" : "Fixed");
+        ImGui::Text("Rendering Frame: %s", render_frame_enum == ECI ? "Inertial" : (render_frame_enum == ECEF ? "Fixed" : "LCI"));
         ImGui::Separator();
 
         ImGui::Text("Rocket State:");
@@ -285,53 +326,25 @@ void aimpoint::key_callback(int key, int scancode, int action, int mods) {
         real_time = !real_time;
     }
 
+    // toggle frame (Earth-centered vs. Launch site)
     if (key == GLFW_KEY_R && action == GLFW_PRESS) {
-        yaw = 0.0;
-        pitch = 0.0;
+        switch(render_frame_enum) {
+            case ECI: {
+                render_frame_enum = LCI;
+            } break;
+            case ECEF: {
+                render_frame_enum = LCF;
+            } break;
+            case LCI: {
+                render_frame_enum = ECI;
+            } break;
+            case LCF: {
+                render_frame_enum = ECEF;
+            } break;
+        }
     }
 
-    if (key == GLFW_KEY_UP && action == GLFW_PRESS) {
-        input.up = true;
-    }
-    if (key == GLFW_KEY_UP && action == GLFW_RELEASE) {
-        input.up = false;
-    }
-
-    if (key == GLFW_KEY_DOWN && action == GLFW_PRESS) {
-        input.down = true;
-    }
-    if (key == GLFW_KEY_DOWN && action == GLFW_RELEASE) {
-        input.down = false;
-    }
-
-    if (key == GLFW_KEY_LEFT && action == GLFW_PRESS) {
-        input.left = true;
-    }
-    if (key == GLFW_KEY_LEFT && action == GLFW_RELEASE) {
-        input.left = false;
-    }
-
-    if (key == GLFW_KEY_RIGHT && action == GLFW_PRESS) {
-        input.right = true;
-    }
-    if (key == GLFW_KEY_RIGHT && action == GLFW_RELEASE) {
-        input.right = false;
-    }
-
-    if (key == GLFW_KEY_Q && action == GLFW_PRESS) {
-        input.q = true;
-    }
-    if (key == GLFW_KEY_Q && action == GLFW_RELEASE) {
-        input.q = false;
-    }
-
-    if (key == GLFW_KEY_E && action == GLFW_PRESS) {
-        input.e = true;
-    }
-    if (key == GLFW_KEY_E && action == GLFW_RELEASE) {
-        input.e = false;
-    }
-
+    // toggle frame (Fixed vs. Inertial)
     if (key == GLFW_KEY_F && action == GLFW_RELEASE) {
         switch(render_frame_enum) {
             case ECI: {
@@ -340,8 +353,11 @@ void aimpoint::key_callback(int key, int scancode, int action, int mods) {
             case ECEF: {
                 render_frame_enum = ECI;
             } break;
-            case RENDER: {
-                render_frame_enum = ECI;
+            case LCI: {
+                render_frame_enum = LCF;
+            } break;
+            case LCF: {
+                render_frame_enum = LCI;
             } break;
         }
     }
@@ -387,10 +403,6 @@ int main(int argc, char** argv) {
 
     set_terminal_log_level(log_level::info);
     spdlog::info("Creating application...");
-
-    laml::Mat3 m(1, 2, 3, 4, 5, 6, 7, 8, 9);
-    laml::Vec3 v(1, 2, 3);
-    laml::transform::transform_point(m, v);
 
     app.run();
 

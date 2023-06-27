@@ -20,13 +20,13 @@ struct opengl_renderer {
     bool should_window_close();
     double get_time();
 
-    void start_frame(const laml::Vec3& cam_pos, float cam_yaw, float cam_pitch);
+    void start_frame(const laml::Vec3& cam_pos, float cam_yaw, float cam_pitch,
+                     const laml::Mat3& render_frame = laml::Mat3());
     
     void bind_texture(const texture& tex);
     void draw_mesh(const triangle_mesh& mesh,
                    const laml::Vec3& position = laml::Vec3(),
-                   const laml::Quat& orientation = laml::Quat(),
-                   const laml::Mat3& render_frame = laml::Mat3());
+                   const laml::Quat& orientation = laml::Quat());
 
     void start_debug_UI();
     void end_debug_UI();
@@ -39,6 +39,8 @@ private:
     void* raw_glfw_window;
 
     uint32 shader;
+
+    mat3f render_frame;
 
     // video recording
 #if USE_DTV

@@ -224,7 +224,10 @@ double opengl_renderer::get_time() {
     return glfwGetTime();
 }
 
-void opengl_renderer::start_frame(const laml::Vec3& cam_pos, float cam_yaw, float cam_pitch){
+void opengl_renderer::start_frame(const laml::Vec3& cam_pos, float cam_yaw, float cam_pitch,
+                                  const laml::Mat3& new_render_frame){
+    render_frame = new_render_frame;
+
     glClearColor(0.2f, 0.4f, 0.1f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -251,8 +254,7 @@ void opengl_renderer::bind_texture(const texture& tex) {
 
 void opengl_renderer::draw_mesh(const triangle_mesh& mesh, 
                                 const laml::Vec3& position, 
-                                const laml::Quat& orientation,
-                                const laml::Mat3& render_frame) {
+                                const laml::Quat& orientation) {
     laml::Mat4 transform_matrix;
     //laml::transform::create_transform_translate(transform_matrix, position);
     //transform_matrix = laml::mul(laml::Mat4(render_frame), transform_matrix);

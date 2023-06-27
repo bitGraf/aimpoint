@@ -45,7 +45,8 @@ struct plot_signal {
 enum coordinate_frame : int {
     ECI = 0,
     ECEF = 1,
-    RENDER = 2,
+    LCI = 2,
+    LCF = 3,
 };
 
 struct aimpoint {
@@ -78,14 +79,13 @@ private:
     texture grid_tex, red_tex, green_tex, blue_tex;
     coordinate_frame render_frame_enum = ECI;
 
-    vec3f dot_pos;
-
     planet earth;
     rocket body;
 
     float cam_orbit_distance;
     laml::Vec3 cam_orbit_point;
     float yaw, pitch;
+    mat3d lci2eci, eci2lci;
 
     struct {
         double xpos = 0; 
@@ -96,13 +96,6 @@ private:
 
         bool mouse1 = false; 
         bool mouse2 = false;
-
-        bool up = false;
-        bool down = false;
-        bool left = false;
-        bool right = false;
-        bool q = false;
-        bool e = false;
     } input;
 
     // plotting
