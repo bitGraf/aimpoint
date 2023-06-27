@@ -147,7 +147,9 @@ void aimpoint::render() {
                            eci2lci.c_12, eci2lci.c_22, eci2lci.c_32,
                            eci2lci.c_13, eci2lci.c_23, eci2lci.c_33);
             render_frame = laml::mul(lci_to_render, _eci2lci);
-            cam_orbit_point = vec3f(0.0f, earth.equatorial_radius, 0.0f);
+
+            vec3f lci_point = laml::transform::transform_point(eci2lci, earth.fixed_to_inertial(earth.lla_to_fixed(body.launch_lat,body.launch_lon,0.0), 0.0));
+            cam_orbit_point = laml::transform::transform_point(lci_to_render, lci_point);
             zoom_level = 0.25f;
         } break;
         case LCF: {
@@ -155,7 +157,8 @@ void aimpoint::render() {
                            eci2lci.c_12, eci2lci.c_22, eci2lci.c_32,
                            eci2lci.c_13, eci2lci.c_23, eci2lci.c_33);
             render_frame = laml::mul(lci_to_render, laml::mul(_eci2lci, earth.mat_inertial_to_fixed));
-            cam_orbit_point = vec3f(0.0f, earth.equatorial_radius, 0.0f);
+            vec3f lci_point = laml::transform::transform_point(eci2lci, earth.fixed_to_inertial(earth.lla_to_fixed(body.launch_lat,body.launch_lon,0.0), 0.0));
+            cam_orbit_point = laml::transform::transform_point(lci_to_render, lci_point);
             zoom_level = 0.25f;
         } break;
     }
@@ -177,6 +180,9 @@ void aimpoint::render() {
         renderer.draw_mesh(dot, pos_eci, laml::transform::quat_from_mat(earth.mat_fixed_to_inertial));
 
         pos_eci = vec3f((earth.lla_to_fixed(0, 0, 0)));
+        renderer.draw_mesh(dot, pos_eci, laml::Quat());
+
+        pos_eci = earth.fixed_to_inertial(earth.lla_to_fixed(body.launch_lat,body.launch_lon,0.0));
         renderer.draw_mesh(dot, pos_eci, laml::Quat());
     }
     renderer.bind_texture(green_tex);

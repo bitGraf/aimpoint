@@ -10,6 +10,7 @@ struct triangle_mesh {
     };
 
     bool load_from_mesh_file(const char* filename, float scale_factor = 1.0f);
+    bool load_from_mesh_file(const char* filename, float x_scale_factor, float y_scale_factor, float z_scale_factor);
 
 private:
     uint16 num_prims = 0;
