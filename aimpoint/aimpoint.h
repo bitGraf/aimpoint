@@ -79,7 +79,7 @@ private:
 
     bool show_info_panel = false;
     bool show_keplerian_panel = true;
-    bool show_anomoly_panel = true;
+    bool show_anomoly_panel = false;
 
     opengl_renderer renderer;
     triangle_mesh mesh, dot;

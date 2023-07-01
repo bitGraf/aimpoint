@@ -1,5 +1,41 @@
 #include "orbit.h"
 
+static const double trig_tol = 1e-9;
+
+double eccentric_from_mean(const double e, const double mean_deg, double eccentric_guess_deg) {
+    const double tol = 1e-12;
+
+    // iterative method to solve
+    // M = E - e*sinE for E given e,M
+    // M = Mean Anomaly
+    // E = Eccentric Anomaly
+
+    // Method:
+    // rewrite as E_(n+1) = M + e*sin(E_n)
+    // start with E_0 = M;
+    // in the future: if this is being propogated: E_0 can be the 'old' value of E
+    const double M = mean_deg * laml::constants::deg2rad<double>;
+    double E_prev = eccentric_guess_deg * laml::constants::deg2rad<double>;
+    double E_new = M + e*laml::sin(E_prev);
+    double error = laml::abs(E_new - E_prev);
+    E_prev = E_new;
+    while (error > tol) {
+        E_new = M + e*laml::sin(E_prev);
+        error = laml::abs(E_new - E_prev);
+        E_prev = E_new;
+    }
+
+    return E_new * laml::constants::rad2deg<double>;
+}
+
+double true_from_eccentric(const double e, const double eccentric_deg) {
+    double cE = laml::cosd(eccentric_deg);
+    double true_deg = laml::acosd_safe((cE-e)/(1 - e*cE), trig_tol);
+    if (eccentric_deg > 180.0)
+        true_deg = 360.0 - true_deg;
+    return true_deg;
+}
+
 orbit::orbit(const planet& set_body) : body(set_body) {}
 
 void orbit::initialize(const vec3d& r_vec, const vec3d& v_vec) {
@@ -52,7 +88,7 @@ void orbit::initialize(const vec3d& r_vec, const vec3d& v_vec) {
     eccentric_anomaly = laml::acosd_safe((eccentricity + laml::cosd(true_anomaly)) / (1 + eccentricity*laml::cosd(true_anomaly)), trig_tol);
     if (true_anomaly > 180.0)
         eccentric_anomaly = 360.0 - eccentric_anomaly;
-    mean_anomaly_at_epoch = eccentricity - eccentricity*laml::sind(eccentric_anomaly);
+    mean_anomaly_at_epoch = eccentric_anomaly - eccentricity*laml::sind(eccentric_anomaly)*laml::constants::rad2deg<double>;
 
     // calculate other params
     calc_params(0.0);
@@ -63,48 +99,38 @@ void orbit::advance(double dt) {
     if (mean_anomaly > 360.0)
         mean_anomaly -= 360.0;
 
-    calc_true_anomaly();
-    eccentric_anomaly = laml::acosd_safe((eccentricity + laml::cosd(true_anomaly)) / (1 + eccentricity*laml::cosd(true_anomaly)), trig_tol);
-    if (true_anomaly > 180.0)
-        eccentric_anomaly = 360.0 - eccentric_anomaly;
+    eccentric_anomaly = eccentric_from_mean(eccentricity, mean_anomaly, eccentric_anomaly);
+    true_anomaly = true_from_eccentric(eccentricity, eccentric_anomaly);
 }
 
 void orbit::calc_params(double t) {
     period = 2*laml::constants::pi<double>*sqrt(semimajor_axis*semimajor_axis*semimajor_axis / body.gm);
     mean_motion = 360.0 / period; // deg/s
+    periapsis_alt = semimajor_axis*(1 + eccentricity) - body.equatorial_radius;
+    apoapsis_alt = semimajor_axis*(1 - eccentricity) - body.equatorial_radius;
+
     mean_anomaly = mean_anomaly_at_epoch + mean_motion*t;
-
-    calc_true_anomaly();
-}
-
-void orbit::calc_true_anomaly() {
-    // iterative method to solve
-    // M = E - e*sinE for E given e,M
-    // M = Mean Anomaly
-    // E = True Anomaly (v)
-
-    // Method:
-    // rewrite as E_(n+1) = M + e*sin(E_n)
-    // start with E_0 = M;
-    // in the future: if this is being propogated: E_0 can be the 'old' value of E
-    if (true_anomaly > 180.0 && true_anomaly < 185.0)
-        bool sto = true;
-    const double M = mean_anomaly * laml::constants::deg2rad<double>;
-    const double e = eccentricity;
-    double E_prev = M;
-    double E_new = M + e*laml::sin(E_prev);
-    double error = laml::abs(E_new - E_prev);
-    E_prev = E_new;
-    const double tol = 1e-12;
-    while (error > tol) {
-        E_new = M + e*laml::sin(E_prev);
-        error = laml::abs(E_new - E_prev);
-        E_prev = E_new;
-    }
-
-    true_anomaly = E_new * laml::constants::rad2deg<double>;
+    eccentric_anomaly = eccentric_from_mean(eccentricity, mean_anomaly, eccentric_anomaly);
+    true_anomaly = true_from_eccentric(eccentricity, eccentric_anomaly);
 }
 
 void orbit::get_state_vectors(vec3d* pos_eci, vec3d* vel_eci) {
+    double semiminor_axis = semimajor_axis*sqrt(1 - eccentricity*eccentricity);
+    double h = mean_motion*semimajor_axis*semiminor_axis*laml::constants::deg2rad<double>;
 
+    // first calculate in perifocal frame
+    double r_mag = (h*h / body.gm) * 1.0 / (1 + eccentricity*laml::cosd(true_anomaly));
+    vec3d r_w(r_mag*laml::cosd(true_anomaly), r_mag*laml::sind(true_anomaly), 0.0);
+    double v_mag = (body.gm / h);
+    vec3d v_w(-v_mag*laml::sind(true_anomaly), v_mag*(eccentricity + laml::cosd(true_anomaly)), 0.0);
+    v_mag = laml::length(v_w);
+
+    laml::Mat3_highp rot;
+    //laml::transform::create_ZXZ_rotation(rot, -argument_of_periapsis, -inclination, -right_ascension);
+    laml::transform::create_ZXZ_rotation(rot, right_ascension, inclination, argument_of_periapsis);
+
+    if (pos_eci)
+        *pos_eci = laml::transform::transform_point(rot, r_w);
+    if (vel_eci)
+        *vel_eci = laml::transform::transform_point(rot, v_w);
 }

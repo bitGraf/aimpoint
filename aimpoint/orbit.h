@@ -21,16 +21,15 @@ struct orbit {
     double mean_motion;
     double period;
 
+    double periapsis_alt;
+    double apoapsis_alt;
+
     void initialize(const vec3d& pos_eci, const vec3d& vel_eci);
     void calc_params(double t);
     void advance(double dt);
-    void get_state_vectors(vec3d* pos_eci, vec3d* vel_eci);
+    void get_state_vectors(vec3d* pos_eci = nullptr, vec3d* vel_eci = nullptr);
 
 private:
     // the orbital body
     const planet& body;
-
-    void calc_true_anomaly();
-
-    const double trig_tol = 1e-9;
 };

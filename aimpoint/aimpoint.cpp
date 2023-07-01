@@ -101,8 +101,7 @@ int aimpoint::init() {
     lci2eci = body.LCI2ECI;
     eci2lci = laml::transpose(lci2eci);
 
-    kep.initialize(body.state.position, body.state.velocity*1.10);
-    //kep.initialize(body.state.position, body.state.velocity);
+    kep.initialize(body.state.position, body.state.velocity*1.1);
 
     spdlog::info("Application intitialized");
 
@@ -221,6 +220,13 @@ void aimpoint::render() {
 
     renderer.bind_texture(grid_tex);
     renderer.draw_mesh(dot, body.state.position, body.state.orientation);
+    vec3d pos_kep;
+    double r_mag_ = laml::length(body.state.position);
+    double v_mag_ = laml::length(body.state.velocity);
+    double h_mag = laml::length(laml::cross(body.state.position, body.state.velocity));
+    kep.get_state_vectors(&pos_kep);
+    renderer.bind_texture(red_tex);
+    renderer.draw_mesh(dot, pos_kep, body.state.orientation);
     //vec3d launch_eci = earth.fixed_to_inertial(earth.lla_to_fixed(28.3922, -80.6077, 0.0), 0.0);
     //for (int n = 0; n < 5; n++) {
     //    vec3d pos_lci(0.0, 0.0, -0.2*n);
