@@ -1,0 +1,36 @@
+#pragma once
+#include "defines.h"
+
+#include "planet.h"
+
+struct orbit {
+    orbit(const planet& set_body);
+
+    // 6 Keplerian Elements - At Epoch
+    double eccentricity;
+    double semimajor_axis;
+    double inclination;
+    double right_ascension;
+    double argument_of_periapsis;
+    double mean_anomaly_at_epoch;
+
+    // other parameters
+    double mean_anomaly;
+    double eccentric_anomaly;
+    double true_anomaly;
+    double mean_motion;
+    double period;
+
+    void initialize(const vec3d& pos_eci, const vec3d& vel_eci);
+    void calc_params(double t);
+    void advance(double dt);
+    void get_state_vectors(vec3d* pos_eci, vec3d* vel_eci);
+
+private:
+    // the orbital body
+    const planet& body;
+
+    void calc_true_anomaly();
+
+    const double trig_tol = 1e-9;
+};

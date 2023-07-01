@@ -58,6 +58,7 @@ add_executable( aimpoint
     ${SRC_DIR}/log.cpp
     ${SRC_DIR}/physics.cpp
     ${SRC_DIR}/planet.cpp
+    ${SRC_DIR}/orbit.cpp
     ${SRC_DIR}/body_type/t_bar.cpp
     ${SRC_DIR}/body_type/rocket.cpp
     ${SRC_DIR}/body_type/mass_spring_damper.cpp
@@ -70,6 +71,7 @@ add_executable( aimpoint
     ${SRC_DIR}/defines.h
     ${SRC_DIR}/physics.h
     ${SRC_DIR}/planet.h
+    ${SRC_DIR}/orbit.h
     ${SRC_DIR}/body_type/t_bar.h
     ${SRC_DIR}/body_type/rocket.h
     ${SRC_DIR}/body_type/mass_spring_damper.h

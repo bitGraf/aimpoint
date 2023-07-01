@@ -241,7 +241,7 @@ void opengl_renderer::start_frame(const laml::Vec3& cam_pos, float cam_yaw, floa
 
     laml::Mat4 projection_matrix;
     float AR = ((float)window_width / (float)window_height);
-    laml::transform::create_projection_perspective(projection_matrix, 75.0f, AR, 1000.0f, 14000000.0f);
+    laml::transform::create_projection_perspective(projection_matrix, 75.0f, AR, 1000.0f, 20'000'000.0f);
     //laml::transform::create_projection_orthographic(projection_matrix, -10.0f, 10.0f, -10.0f, 10.0f, -10.0f, 10.0f);
     int projLocation = glGetUniformLocation(shader, "r_Projection");
     glUniformMatrix4fv(projLocation, 1, GL_FALSE, projection_matrix._data);

@@ -12,9 +12,15 @@ rocket::rocket() {
     // KSC 39b
     launch_lat = 28.627023;
     launch_lon = -80.620856;
-    launch_az = 90;
+    launch_az = 0;
 
     //launch_lat = 45.01; // transferred to e^2 = .5 ellipsoid
+
+
+    //launch_lat = 40;
+    //launch_lon = -75;
+
+    //launch_lat = 57.80;
 }
 
 void rocket::launch(planet* p) {

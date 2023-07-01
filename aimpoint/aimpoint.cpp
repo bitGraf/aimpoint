@@ -72,6 +72,7 @@ int aimpoint::run() {
 int aimpoint::init() {
     simulation_rate = 200.0; // Hz
     sim_frame = 0;
+    render_frame = 0;
     real_time = true;
 
     sim_time = 0.0;
@@ -99,6 +100,10 @@ int aimpoint::init() {
     body.launch(&earth);
     lci2eci = body.LCI2ECI;
     eci2lci = laml::transpose(lci2eci);
+
+    kep.initialize(body.state.position, body.state.velocity*1.10);
+    //kep.initialize(body.state.position, body.state.velocity);
+
     spdlog::info("Application intitialized");
 
     return 0;
@@ -114,6 +119,14 @@ void aimpoint::step(double dt) {
 
     earth.update(sim_time, dt);
     body.integrate_states(sim_time, dt);
+    kep.advance(dt);
+
+    if (sim_frame % frames_per_min == 0) {
+        t.add_point(sim_time);
+        M.add_point(kep.mean_anomaly);
+        E.add_point(kep.eccentric_anomaly);
+        v.add_point(kep.true_anomaly);
+    }
     
     sim_time += dt;
     sim_frame++;
@@ -131,22 +144,22 @@ void aimpoint::render() {
 
     laml::Mat3 eci_to_render(0.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f);
     laml::Mat3 lci_to_render(1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, -1.0f, 0.0f);
-    laml::Mat3 render_frame(1.0f);
+    laml::Mat3 render_coord_frame(1.0f);
     float zoom_level = 1.0f;
     switch(render_frame_enum) {
         case ECI: {
-            render_frame = eci_to_render;
+            render_coord_frame = eci_to_render;
             cam_orbit_point = vec3f(0.0f);
         } break;
         case ECEF: {
-            render_frame = laml::mul(eci_to_render, earth.mat_inertial_to_fixed);
+            render_coord_frame = laml::mul(eci_to_render, earth.mat_inertial_to_fixed);
             cam_orbit_point = vec3f(0.0f);
         } break;
         case LCI: {
             mat3f _eci2lci(eci2lci.c_11, eci2lci.c_21, eci2lci.c_31,
                            eci2lci.c_12, eci2lci.c_22, eci2lci.c_32,
                            eci2lci.c_13, eci2lci.c_23, eci2lci.c_33);
-            render_frame = laml::mul(lci_to_render, _eci2lci);
+            render_coord_frame = laml::mul(lci_to_render, _eci2lci);
 
             vec3f lci_point = laml::transform::transform_point(eci2lci, earth.fixed_to_inertial(earth.lla_to_fixed(body.launch_lat,body.launch_lon,0.0), 0.0));
             cam_orbit_point = laml::transform::transform_point(lci_to_render, lci_point);
@@ -156,7 +169,7 @@ void aimpoint::render() {
             mat3f _eci2lci(eci2lci.c_11, eci2lci.c_21, eci2lci.c_31,
                            eci2lci.c_12, eci2lci.c_22, eci2lci.c_32,
                            eci2lci.c_13, eci2lci.c_23, eci2lci.c_33);
-            render_frame = laml::mul(lci_to_render, laml::mul(_eci2lci, earth.mat_inertial_to_fixed));
+            render_coord_frame = laml::mul(lci_to_render, laml::mul(_eci2lci, earth.mat_inertial_to_fixed));
             vec3f lci_point = laml::transform::transform_point(eci2lci, earth.fixed_to_inertial(earth.lla_to_fixed(body.launch_lat,body.launch_lon,0.0), 0.0));
             cam_orbit_point = laml::transform::transform_point(lci_to_render, lci_point);
             zoom_level = 0.25f;
@@ -169,7 +182,7 @@ void aimpoint::render() {
                            -laml::sind(pitch), 
                             laml::cosd(pitch)*laml::cosd(yaw));
 
-    renderer.start_frame(cam_pos, yaw, pitch, render_frame);
+    renderer.start_frame(cam_pos, yaw, pitch, render_coord_frame);
 
     renderer.bind_texture(earth.diffuse);
     renderer.draw_mesh(earth.mesh, laml::Vec3(0.0f), laml::transform::quat_from_mat(earth.mat_fixed_to_inertial));
@@ -284,6 +297,59 @@ void aimpoint::render() {
         ImGui::End();
     }
 
+    if (show_keplerian_panel) {
+        ImGui::Begin("Keplerian Elements");
+
+        /*
+        double eccentricity;
+        double semimajor_axis;
+        double inclination;
+        double right_ascension;
+        double argument_of_periapsis;
+        double mean_anomaly;
+
+        double mean_motion;
+        double period;
+         */
+
+        ImGui::Text("Eccentricity: %.5f", kep.eccentricity);
+        ImGui::Text("Semimajor Axis: %.1f km", kep.semimajor_axis/1000.0);
+        ImGui::Text("Inclination: %.2f deg", kep.inclination);
+        ImGui::Text("RAAN: %.2f deg", kep.right_ascension);
+        ImGui::Text("Arg. of Periapsis: %.2f deg", kep.argument_of_periapsis);
+        ImGui::Text("Mean Anomaly (Epoch): %.2f deg", kep.mean_anomaly_at_epoch);
+        ImGui::Separator();
+        ImGui::Text("Mean Anomaly: %.5f deg", kep.mean_anomaly);
+        ImGui::Text("Ecc  Anomaly: %.5f deg", kep.eccentric_anomaly);
+        ImGui::Text("True Anomaly: %.5f deg", kep.true_anomaly);
+        ImGui::Text("Mean Motion: %.5f deg/s", kep.mean_motion);
+        ImGui::Text("Period: %.3f min", kep.period / 60.0);
+        ImGui::Separator();
+
+        ImGui::End();
+
+        if (show_anomoly_panel) {
+            ImGui::Begin("Anomalies");
+
+            double history = t.length;
+            static ImPlotAxisFlags flags = ImPlotAxisFlags_NoTickLabels;
+            if (ImPlot::BeginPlot("Anomaly")) {
+                ImPlot::SetupAxes(nullptr, nullptr, flags, flags);
+                ImPlot::SetupAxisLimits(ImAxis_X1,(sim_time - history), sim_time, ImGuiCond_Always);
+                ImPlot::SetupAxisLimits(ImAxis_Y1,0,360);
+                ImPlot::SetNextFillStyle(IMPLOT_AUTO_COL,0.5f);
+
+                ImPlot::PlotLine("Mean", t.data, M.data, t.length, 0, t.offset, sizeof(double));
+                ImPlot::PlotLine("Eccentric", t.data, E.data, t.length, 0, t.offset, sizeof(double));
+                ImPlot::PlotLine("True", t.data, v.data, t.length, 0, t.offset, sizeof(double));
+
+                ImPlot::EndPlot();
+            }
+
+            ImGui::End();
+        }
+    }
+
 #if 0
     // Plots
     w_t.add_point(sim_time);
@@ -315,6 +381,8 @@ void aimpoint::render() {
 
     //spdlog::trace("[{0:0.3f}] ({1:0.3f}) render step", sim_time, alpha);
     //spdlog::trace("[{0:0.3f}] render step", sim_time);
+
+    render_frame++;
 }
 
 void aimpoint::shutdown() {
@@ -366,6 +434,14 @@ void aimpoint::key_callback(int key, int scancode, int action, int mods) {
                 render_frame_enum = LCI;
             } break;
         }
+    }
+
+    // toggle orbital param displays
+    if (key == GLFW_KEY_K && action == GLFW_RELEASE) {
+        show_keplerian_panel = !show_keplerian_panel;
+    }
+    if (key == GLFW_KEY_A && action == GLFW_RELEASE) {
+        show_anomoly_panel = !show_anomoly_panel;
     }
 }
 

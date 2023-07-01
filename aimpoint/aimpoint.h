@@ -7,9 +7,12 @@
 #include "body_type/rocket.h"
 
 #include "planet.h"
+#include "orbit.h"
 
 const size_t num_seconds_history = 5;
 const size_t buffer_length = num_seconds_history * 60;
+const size_t orbit_buffer_length = (200) * 60;
+const size_t frames_per_min = 60*60;
 
 template<typename T, size_t num_points>
 struct plot_signal {
@@ -51,6 +54,7 @@ enum coordinate_frame : int {
 
 struct aimpoint {
 public:
+    aimpoint() : kep(earth) {}
     int run();
 
     void key_callback(int key, int scancode, int action, int mods);
@@ -67,12 +71,15 @@ private:
 
     double simulation_rate;
     uint64 sim_frame;
+    uint64 render_frame;
 
     double sim_time;
     double wall_time;
     double frame_time;
 
     bool show_info_panel = false;
+    bool show_keplerian_panel = true;
+    bool show_anomoly_panel = true;
 
     opengl_renderer renderer;
     triangle_mesh mesh, dot;
@@ -80,6 +87,7 @@ private:
     coordinate_frame render_frame_enum = ECI;
 
     planet earth;
+    orbit kep;
     rocket body;
 
     float cam_orbit_distance;
@@ -99,10 +107,10 @@ private:
     } input;
 
     // plotting
-    plot_signal<double, buffer_length> w_t;
-    plot_signal<double, buffer_length> w_x;
-    plot_signal<double, buffer_length> w_y;
-    plot_signal<double, buffer_length> w_z;
+    plot_signal<double, orbit_buffer_length> t;
+    plot_signal<double, orbit_buffer_length> M;
+    plot_signal<double, orbit_buffer_length> E;
+    plot_signal<double, orbit_buffer_length> v;
 
     plot_signal<double, buffer_length> sim_scale_history;
 };
