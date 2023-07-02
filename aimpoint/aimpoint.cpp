@@ -74,8 +74,8 @@ int aimpoint::init() {
     sim_frame = 0;
     render_frame = 0;
     real_time = true;
-    log_zoom_level = 0.1f*floor(10.0f*exp(zoom_level)); // lock to 0.1 increments
-    zoom_level = log(log_zoom_level);
+    log_zoom_level = 27;
+    zoom_level = log(((float)log_zoom_level)/10.0f);
 
     sim_time = 0.0;
     wall_time = 0.0;
@@ -103,7 +103,7 @@ int aimpoint::init() {
     lci2eci = body.LCI2ECI;
     eci2lci = laml::transpose(lci2eci);
 
-    kep.initialize(body.state.position, body.state.velocity*1.1, 0.0);
+    kep.initialize(body.state.position, body.state.velocity*1.0, 0.0);
     kep.calc_path_mesh();
     kep2.initialize(body.state.position, body.state.velocity*1.0, 0.0);
     kep2.calc_path_mesh();
@@ -191,55 +191,43 @@ void aimpoint::render() {
     renderer.bind_texture(earth.diffuse);
     renderer.draw_mesh(earth.mesh, laml::Vec3(0.0f), laml::transform::quat_from_mat(earth.mat_fixed_to_inertial));
 
+    // draw ECI frame
+    renderer.draw_vector(vec3f(1.0f, 0.0f, 0.0f), 10000000, vec3f(1.0f, 0.1f, 0.1f));
+    renderer.draw_vector(vec3f(0.0f, 1.0f, 0.0f), 10000000, vec3f(0.1f, 1.0f, 0.1f));
+    renderer.draw_vector(vec3f(0.0f, 0.0f, 1.0f), 10000000, vec3f(0.1f, 0.1f, 1.0f));
+
+    // draw ECEF frame
+    renderer.draw_vector(laml::transform::transform_point(earth.mat_fixed_to_inertial, vec3f(1.0f, 0.0f, 0.0f)), 10000000, vec3f(1.0f, 0.1f, 0.1f));
+    renderer.draw_vector(laml::transform::transform_point(earth.mat_fixed_to_inertial, vec3f(0.0f, 1.0f, 0.0f)), 10000000, vec3f(0.1f, 1.0f, 0.1f));
+    renderer.draw_vector(laml::transform::transform_point(earth.mat_fixed_to_inertial, vec3f(0.0f, 0.0f, 1.0f)), 10000000, vec3f(0.1f, 0.1f, 1.0f));
+
+    // dot at launch site
     renderer.bind_texture(red_tex);
-    {
-        vec3f pos_eci(earth.fixed_to_inertial(earth.lla_to_fixed(0, 0, 0)));
-        renderer.draw_mesh(dot, pos_eci, laml::transform::quat_from_mat(earth.mat_fixed_to_inertial));
+    vec3f launch_site = earth.fixed_to_inertial(earth.lla_to_fixed(body.launch_lat,body.launch_lon,0.0));
+    renderer.draw_mesh(dot, launch_site, laml::Quat());
 
-        pos_eci = vec3f((earth.lla_to_fixed(0, 0, 0)));
-        renderer.draw_mesh(dot, pos_eci, laml::Quat());
-
-        pos_eci = earth.fixed_to_inertial(earth.lla_to_fixed(body.launch_lat,body.launch_lon,0.0));
-        renderer.draw_mesh(dot, pos_eci, laml::Quat());
-    }
-    renderer.bind_texture(green_tex);
-    {
-        // Fixed
-        vec3f pos_eci(earth.fixed_to_inertial(earth.lla_to_fixed(0, 90, 0)));
-        renderer.draw_mesh(dot, pos_eci, laml::transform::quat_from_mat(earth.mat_fixed_to_inertial));
-
-        // Inertial
-        pos_eci = vec3f((earth.lla_to_fixed(0, 90, 0)));
-        renderer.draw_mesh(dot, pos_eci, laml::Quat());
-    }
-    renderer.bind_texture(blue_tex);
-    {
-        //if (render_frame_enum == ECEF) {
-            vec3f pos_eci(earth.fixed_to_inertial(earth.lla_to_fixed(90, 0, 0)));
-            renderer.draw_mesh(dot, pos_eci, laml::transform::quat_from_mat(earth.mat_fixed_to_inertial));
-        //} else {
-        //    vec3f pos_eci((earth.lla_to_fixed(90, 0, 0)));
-        //    renderer.draw_mesh(dot, pos_eci, laml::Quat(), render_frame);
-        //}
-    }
-
+    // Orbit from RK4 integrator
     renderer.bind_texture(grid_tex);
     renderer.draw_mesh(dot, body.state.position, body.state.orientation);
+    renderer.draw_path(kep.path_handle,  100, vec3f(.3333f, 0.4588f, .5418f));
+
+    // Orbit from orbit integrator
     vec3d pos_kep;
     kep.get_state_vectors(&pos_kep);
     renderer.bind_texture(red_tex);
     renderer.draw_mesh(dot, pos_kep, body.state.orientation);
-    renderer.draw_path(kep.path_handle, 100);
-
     kep2.initialize(body.state.position, body.state.velocity, sim_time);
     kep2.calc_path_mesh();
-    renderer.draw_path(kep2.path_handle, 100);
+    renderer.draw_path(kep2.path_handle, 100, vec3f(.3333f, 0.4588f, .5418f));
 
+    // draw orbit/equatorial planes
     if (draw_planes) {
         vec3d h_vec = laml::cross(body.state.position, body.state.velocity);
         h_vec = laml::normalize(h_vec);
-        renderer.draw_plane(vec3f(h_vec), 10000000);
-        renderer.draw_plane(vec3f(0.0f, 0.0f, 1.0f), 10000000);
+        renderer.draw_plane(vec3f(h_vec),            20000000, vec3f(1.0f, 0.96f, 0.68f), 0.7f);
+        renderer.draw_plane(vec3f(0.0f, 0.0f, 1.0f), 20000000, vec3f(0.8f, 0.70f, 0.80f), 0.5f);
+
+        renderer.draw_vector(h_vec, 10000000, vec3f(1.0f, 0.96f, 0.68f));
     }
 
     // Draw UI
@@ -374,7 +362,7 @@ void aimpoint::render() {
     ImGui::Begin("Zoom", NULL, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
     //ImGui::Begin("Zoom", NULL, ImGuiWindowFlags_NoTitleBar);
     ImGui::Text("Zoom: %.1f", zoom_level);
-    ImGui::Text("LogZoom: %.1f", log_zoom_level);
+    ImGui::Text("LogZoom: %d", log_zoom_level);
     ImGui::End();
 
 #if 0
@@ -502,15 +490,18 @@ void aimpoint::mouse_button_callback(int button, int action, int mods) {
 }
 
 void aimpoint::mouse_scroll_callback(double xoffset, double yoffset) {
-    float rate = 0.1f;
-    if ((log_zoom_level >= 2.5f && yoffset > 0.0) || log_zoom_level >= 3.0f) rate = 0.5f;
+    int32 yoff = (yoffset > 0.0) ? -1 : ((yoffset < 0.0) ? 1 : 0);
+    int32 rate = 1;
+
+    if ((log_zoom_level == 30 && yoff > 0) || log_zoom_level >= 33) rate = 3;
+    if ((log_zoom_level == 45 && yoff > 0) || log_zoom_level >= 50) rate = 5;
     
-    log_zoom_level -= yoffset*rate; // negative to swap dir
+    log_zoom_level += yoff*rate; // negative to swap dir
 
-    if (log_zoom_level > 10.0f) log_zoom_level = 10.0f;
-    if (log_zoom_level <  1.7f) log_zoom_level =  1.7f;
+    if (log_zoom_level > 100) log_zoom_level = 100;
+    if (log_zoom_level <  17) log_zoom_level =  17;
 
-    zoom_level = log(log_zoom_level);
+    zoom_level = log(((float)log_zoom_level)/10.0f);
 }
 
 
@@ -533,6 +524,6 @@ int main(int argc, char** argv) {
     app.run();
 
     system("pause");
-	
-	return 0;
+
+    return 0;
 }

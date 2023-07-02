@@ -179,12 +179,14 @@ int32 opengl_renderer::init_gl_glfw(aimpoint* app_ptr, int32 width, int32 height
     }
 
     const char *lineFragmentShaderSource = "#version 430 core\n"
-                                       "out vec4 FragColor;\n"
-                                       "void main()\n"
-                                       "{\n"
-                                       "   vec3 color = vec3(.3333f, 0.4588f, .5418f);\n"
-                                       "   FragColor = vec4(color, 1.0f);\n"
-                                       "}\0";
+                                           "out vec4 FragColor;\n"
+                                           "layout (location = 4) uniform vec3 r_color;\n"
+                                           "layout (location = 5) uniform float r_alpha;\n"
+                                           "void main()\n"
+                                           "{\n"
+                                           "   //vec3 color = vec3(.3333f, 0.4588f, .5418f);\n"
+                                           "   FragColor = vec4(r_color, r_alpha);\n"
+                                           "}\0";
 
     fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
     glShaderSource(fragmentShader, 1, &lineFragmentShaderSource, NULL);
@@ -217,7 +219,13 @@ int32 opengl_renderer::init_gl_glfw(aimpoint* app_ptr, int32 width, int32 height
     glDeleteShader(vertexShader);
     glDeleteShader(fragmentShader);
 
+    // OpenGL settings
     glLineWidth(4.0f);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);  
+
+    // load primitives
+    vector_mesh.load_from_mesh_file("../data/vector.mesh", 1.0f, 0.7f, 0.7f);
 
     // create simple plane mesh
     {
@@ -357,6 +365,13 @@ void opengl_renderer::start_frame(const laml::Vec3& cam_pos, float cam_yaw, floa
         //laml::Mat4 transform_matrix(1.0f);
         //int transformLocation = glGetUniformLocation(line_shader, "r_Transform");
         //glUniformMatrix4fv(transformLocation, 1, GL_FALSE, transform_matrix._data);
+
+        vec3f color(1.0f, 1.0f, 1.0f);
+        float alpha = 1.0f;
+        int colorLocation = glGetUniformLocation(line_shader, "r_color");
+        glUniform3fv(colorLocation, 1, color._data);
+        int alphaLocation = glGetUniformLocation(line_shader, "r_alpha");
+        glUniform1f(alphaLocation, alpha);
     }
 
     {
@@ -402,7 +417,7 @@ void opengl_renderer::draw_mesh(const triangle_mesh& mesh,
     }
 }
 
-void opengl_renderer::draw_path(uint32 handle, uint32 N) {
+void opengl_renderer::draw_path(uint32 handle, uint32 N, vec3f color, float alpha) {
     glUseProgram(line_shader);
 
     laml::Mat4 transform_matrix;
@@ -412,12 +427,17 @@ void opengl_renderer::draw_path(uint32 handle, uint32 N) {
     int transformLocation = glGetUniformLocation(line_shader, "r_Transform");
     glUniformMatrix4fv(transformLocation, 1, GL_FALSE, transform_matrix._data);
 
+    int colorLocation = glGetUniformLocation(line_shader, "r_color");
+    glUniform3fv(colorLocation, 1, color._data);
+    int alphaLocation = glGetUniformLocation(line_shader, "r_alpha");
+    glUniform1f(alphaLocation, alpha);
+
     glBindVertexArray(handle);
     glDrawElements(GL_LINE_LOOP, N, GL_UNSIGNED_INT, 0);
 }
 
-void opengl_renderer::draw_plane(vec3f normal, float scale) {
-    glUseProgram(basic_shader);
+void opengl_renderer::draw_plane(vec3f normal, float scale, vec3f color, float alpha) {
+    glUseProgram(line_shader);
 
     vec3f Z_vec(0.0f, 0.0f, 1.0f);
 
@@ -437,8 +457,43 @@ void opengl_renderer::draw_plane(vec3f normal, float scale) {
     int transformLocation = glGetUniformLocation(line_shader, "r_Transform");
     glUniformMatrix4fv(transformLocation, 1, GL_FALSE, transform_matrix._data);
 
+    int colorLocation = glGetUniformLocation(line_shader, "r_color");
+    glUniform3fv(colorLocation, 1, color._data);
+    int alphaLocation = glGetUniformLocation(line_shader, "r_alpha");
+    glUniform1f(alphaLocation, alpha);
+
     glBindVertexArray(plane_handle);
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+}
+
+void opengl_renderer::draw_vector(vec3f vector, float scale, vec3f color, float alpha) {
+    glUseProgram(line_shader);
+
+    vec3f Z_vec(0.0f, 0.0f, 1.0f);
+
+    vec3f tangent = laml::cross(Z_vec, vector);
+    float m = laml::length(tangent);
+    if (laml::abs(m) < 1e-9) {
+        vec3f Y_vec(0.0f, 1.0f, 0.0f);
+        tangent = laml::normalize(laml::cross(Y_vec, vector));
+    } else {
+        tangent = tangent/m;
+    }
+    vec3f bitangent = laml::cross(vector, tangent);
+
+    mat3f rot(vector, tangent, bitangent);
+    laml::Mat4 transform_matrix(laml::mul(render_frame, rot*scale));
+
+    int transformLocation = glGetUniformLocation(line_shader, "r_Transform");
+    glUniformMatrix4fv(transformLocation, 1, GL_FALSE, transform_matrix._data);
+
+    int colorLocation = glGetUniformLocation(line_shader, "r_color");
+    glUniform3fv(colorLocation, 1, color._data);
+    int alphaLocation = glGetUniformLocation(line_shader, "r_alpha");
+    glUniform1f(alphaLocation, alpha);
+
+    glBindVertexArray(vector_mesh.handles[0]);
+    glDrawElements(GL_TRIANGLES, vector_mesh.num_inds[0], GL_UNSIGNED_INT, 0);
 }
 
 void opengl_renderer::start_debug_UI() {    

@@ -27,9 +27,10 @@ struct opengl_renderer {
     void draw_mesh(const triangle_mesh& mesh,
                    const laml::Vec3& position = laml::Vec3(),
                    const laml::Quat& orientation = laml::Quat());
-    void draw_path(uint32 handle, uint32 N);
 
-    void draw_plane(vec3f normal, float scale);
+    void draw_path(uint32 handle, uint32 N,     vec3f color = vec3f(1.0f, 1.0f, 1.0f), float alpha = 1.0f);
+    void draw_plane(vec3f normal, float scale,  vec3f color = vec3f(1.0f, 1.0f, 1.0f), float alpha = 1.0f);
+    void draw_vector(vec3f vector, float scale, vec3f color = vec3f(1.0f, 1.0f, 1.0f), float alpha = 1.0f);
 
     void start_debug_UI();
     void end_debug_UI();
@@ -45,6 +46,7 @@ private:
     uint32 line_shader;
 
     uint32 plane_handle;
+    triangle_mesh vector_mesh;
 
     mat3f render_frame;
 

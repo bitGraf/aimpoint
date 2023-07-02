@@ -19,6 +19,8 @@ typedef std::int64_t int64;
 
 typedef laml::Vec3 vec3f;
 typedef laml::Vec3_highp vec3d;
+typedef laml::Vec4 vec4f;
+typedef laml::Vec4_highp vec4d;
 
 typedef laml::Mat3 mat3f;
 typedef laml::Mat3_highp mat3d;

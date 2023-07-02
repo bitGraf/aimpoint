@@ -79,7 +79,7 @@ private:
     double frame_time;
 
     float zoom_level = 1.0f;
-    float log_zoom_level;
+    int32 log_zoom_level;
 
     bool show_info_panel = false;
     bool show_keplerian_panel = false;
