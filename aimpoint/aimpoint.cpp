@@ -97,7 +97,7 @@ int aimpoint::init() {
     sim_frame = 0;
     render_frame = 0;
     real_time = true;
-    log_zoom_level = 27;
+    log_zoom_level = 50;
     zoom_level = log(((float)log_zoom_level)/10.0f);
 
     sim_time = 0.0;
@@ -105,8 +105,8 @@ int aimpoint::init() {
 
     cam_orbit_point = laml::Vec3(0.0f, 0.0f, 0.0f);
     cam_orbit_distance = 2.0f*earth.equatorial_radius;
-    yaw = -65;
-    pitch = -15;
+    yaw = 45;
+    pitch = -30;
 
     renderer.init_gl_glfw(this, 1280, 720);
 
@@ -220,9 +220,9 @@ void aimpoint::render() {
     renderer.draw_vector(vec3f(0.0f, 0.0f, 1.0f), 10000000, vec3f(0.1f, 0.1f, 1.0f));
 
     // draw ECEF frame
-    renderer.draw_vector(laml::transform::transform_point(earth.mat_fixed_to_inertial, vec3f(1.0f, 0.0f, 0.0f)), 10000000, vec3f(1.0f, 0.1f, 0.1f));
-    renderer.draw_vector(laml::transform::transform_point(earth.mat_fixed_to_inertial, vec3f(0.0f, 1.0f, 0.0f)), 10000000, vec3f(0.1f, 1.0f, 0.1f));
-    renderer.draw_vector(laml::transform::transform_point(earth.mat_fixed_to_inertial, vec3f(0.0f, 0.0f, 1.0f)), 10000000, vec3f(0.1f, 0.1f, 1.0f));
+    renderer.draw_vector(laml::transform::transform_point(earth.mat_fixed_to_inertial, vec3f(1.0f, 0.0f, 0.0f)), 8000000, vec3f(1.0f, 0.3f, 0.3f));
+    renderer.draw_vector(laml::transform::transform_point(earth.mat_fixed_to_inertial, vec3f(0.0f, 1.0f, 0.0f)), 8000000, vec3f(0.3f, 1.0f, 0.3f));
+    //renderer.draw_vector(laml::transform::transform_point(earth.mat_fixed_to_inertial, vec3f(0.0f, 0.0f, 1.0f)), 8000000, vec3f(0.3f, 0.3f, 1.0f));
 
     // dot at launch site
     renderer.bind_texture(red_tex);
