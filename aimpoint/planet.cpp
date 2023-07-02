@@ -6,6 +6,9 @@ planet::planet() : mat_inertial_to_fixed(1.0f) {
     //eccentricity_sq = 0;
     //eccentricity_sq = 0.5; // doenst work
     //eccentricity_sq = 0.7071; // does work?? confusion...
+
+    mat_inertial_to_fixed = laml::Mat3(1, 0, 0, 0, 1, 0, 0, 0, 1);
+    mat_fixed_to_inertial = laml::transpose(mat_inertial_to_fixed);
 }
 
 void planet::load_mesh() {

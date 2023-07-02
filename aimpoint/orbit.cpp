@@ -96,7 +96,7 @@ void orbit::initialize(const vec3d& r_vec, const vec3d& v_vec, double T) {
     mean_anomaly_at_epoch = fmod(mean_anomaly - T*mean_motion, 360.0);
 
     // calculate other params
-    calc_params(0.0);
+    calc_params(T);
 }
 
 void orbit::advance(double dt) {
@@ -172,10 +172,10 @@ void orbit::calc_path_mesh() {
     glBindVertexArray(path_handle);
 
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(float)*3*N, path[0]._data, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(float)*3*N, path[0]._data, GL_DYNAMIC_DRAW);
 
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(uint32)*3*N, indices, GL_STATIC_DRAW);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(uint32)*3*N, indices, GL_DYNAMIC_DRAW);
 
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);

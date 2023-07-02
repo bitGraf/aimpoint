@@ -60,6 +60,7 @@ public:
     void key_callback(int key, int scancode, int action, int mods);
     void mouse_pos_callback(double xpos, double ypos);
     void mouse_button_callback(int button, int action, int mods);
+    void mouse_scroll_callback(double xoffset, double yoffset);
 
 private:
     int init();
@@ -77,9 +78,13 @@ private:
     double wall_time;
     double frame_time;
 
+    float zoom_level = 1.0f;
+    float log_zoom_level;
+
     bool show_info_panel = false;
-    bool show_keplerian_panel = true;
+    bool show_keplerian_panel = false;
     bool show_anomoly_panel = false;
+    bool draw_planes = false;
 
     opengl_renderer renderer;
     triangle_mesh mesh, dot;

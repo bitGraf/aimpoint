@@ -17,6 +17,9 @@ static void glfw_error_callback(int error, const char* description);
 static void glfw_key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
 static void glfw_cursor_pos_callback(GLFWwindow* window, double xpos, double ypos);
 static void glfw_mouse_button_callback(GLFWwindow* window, int button, int action, int mods);
+static void glfw_scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
+
+
 void APIENTRY openGL_debug_msg_callback(GLenum source,
                                         GLenum type,
                                         GLuint id,
@@ -55,6 +58,7 @@ int32 opengl_renderer::init_gl_glfw(aimpoint* app_ptr, int32 width, int32 height
     glfwSetKeyCallback(window, glfw_key_callback);
     glfwSetCursorPosCallback(window, glfw_cursor_pos_callback);
     glfwSetMouseButtonCallback(window, glfw_mouse_button_callback);
+    glfwSetScrollCallback(window, glfw_scroll_callback);
 
     glfwSetWindowUserPointer(window, app_ptr);
 
@@ -215,6 +219,39 @@ int32 opengl_renderer::init_gl_glfw(aimpoint* app_ptr, int32 width, int32 height
 
     glLineWidth(4.0f);
 
+    // create simple plane mesh
+    {
+        float verts[] = {
+            0.0f, -1.0f, -1.0f,
+            0.0f,  1.0f, -1.0f,
+            0.0f,  1.0f,  1.0f,
+            0.0f, -1.0f,  1.0f
+        };
+        uint32 inds[] = {
+            0, 1, 2,
+            0, 2, 3
+        };
+        // load points into GPU
+        unsigned int VBO, EBO;
+        glGenVertexArrays(1, &plane_handle);
+        glGenBuffers(1, &VBO);
+        glGenBuffers(1, &EBO);
+
+        glBindVertexArray(plane_handle);
+
+        glBindBuffer(GL_ARRAY_BUFFER, VBO);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(float)*12, verts, GL_DYNAMIC_DRAW);
+
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(uint32)*6, inds, GL_DYNAMIC_DRAW);
+
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+        glEnableVertexAttribArray(0);
+
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+        glBindVertexArray(0);
+    }
+
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
@@ -278,6 +315,12 @@ void glfw_mouse_button_callback(GLFWwindow* window, int button, int action, int 
     app->mouse_button_callback(button, action, mods);
 }
 
+void glfw_scroll_callback(GLFWwindow* window, double xoffset, double yoffset) {
+    aimpoint* app = (aimpoint*)glfwGetWindowUserPointer(window);
+    app->mouse_scroll_callback(xoffset, yoffset);
+}
+
+// main functions
 void opengl_renderer::poll_events() {
     glfwPollEvents();
 }
@@ -306,7 +349,7 @@ void opengl_renderer::start_frame(const laml::Vec3& cam_pos, float cam_yaw, floa
 
         laml::Mat4 projection_matrix;
         float AR = ((float)window_width / (float)window_height);
-        laml::transform::create_projection_perspective(projection_matrix, 75.0f, AR, 1000.0f, 20'000'000.0f);
+        laml::transform::create_projection_perspective(projection_matrix, 75.0f, AR, 1000.0f, 50'000'000.0f);
         //laml::transform::create_projection_orthographic(projection_matrix, -10.0f, 10.0f, -10.0f, 10.0f, -10.0f, 10.0f);
         int projLocation = glGetUniformLocation(line_shader, "r_Projection");
         glUniformMatrix4fv(projLocation, 1, GL_FALSE, projection_matrix._data);
@@ -327,7 +370,7 @@ void opengl_renderer::start_frame(const laml::Vec3& cam_pos, float cam_yaw, floa
 
         laml::Mat4 projection_matrix;
         float AR = ((float)window_width / (float)window_height);
-        laml::transform::create_projection_perspective(projection_matrix, 75.0f, AR, 1000.0f, 20'000'000.0f);
+        laml::transform::create_projection_perspective(projection_matrix, 75.0f, AR, 1000.0f, 50'000'000.0f);
         //laml::transform::create_projection_orthographic(projection_matrix, -10.0f, 10.0f, -10.0f, 10.0f, -10.0f, 10.0f);
         int projLocation = glGetUniformLocation(basic_shader, "r_Projection");
         glUniformMatrix4fv(projLocation, 1, GL_FALSE, projection_matrix._data);
@@ -371,6 +414,31 @@ void opengl_renderer::draw_path(uint32 handle, uint32 N) {
 
     glBindVertexArray(handle);
     glDrawElements(GL_LINE_LOOP, N, GL_UNSIGNED_INT, 0);
+}
+
+void opengl_renderer::draw_plane(vec3f normal, float scale) {
+    glUseProgram(basic_shader);
+
+    vec3f Z_vec(0.0f, 0.0f, 1.0f);
+
+    vec3f tangent = laml::cross(Z_vec, normal);
+    float m = laml::length(tangent);
+    if (laml::abs(m) < 1e-9) {
+        vec3f Y_vec(0.0f, 1.0f, 0.0f);
+        tangent = laml::normalize(laml::cross(Y_vec, normal));
+    } else {
+        tangent = tangent/m;
+    }
+    vec3f bitangent = laml::cross(normal, tangent);
+
+    mat3f rot(normal, tangent, bitangent);
+    laml::Mat4 transform_matrix(laml::mul(render_frame, rot*scale));
+
+    int transformLocation = glGetUniformLocation(line_shader, "r_Transform");
+    glUniformMatrix4fv(transformLocation, 1, GL_FALSE, transform_matrix._data);
+
+    glBindVertexArray(plane_handle);
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 }
 
 void opengl_renderer::start_debug_UI() {    

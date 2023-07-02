@@ -70,10 +70,12 @@ int aimpoint::run() {
 }
 
 int aimpoint::init() {
-    simulation_rate = 1.0; // Hz
+    simulation_rate = 100.0; // Hz
     sim_frame = 0;
     render_frame = 0;
     real_time = true;
+    log_zoom_level = 0.1f*floor(10.0f*exp(zoom_level)); // lock to 0.1 increments
+    zoom_level = log(log_zoom_level);
 
     sim_time = 0.0;
     wall_time = 0.0;
@@ -101,7 +103,7 @@ int aimpoint::init() {
     lci2eci = body.LCI2ECI;
     eci2lci = laml::transpose(lci2eci);
 
-    kep.initialize(body.state.position, body.state.velocity*1.0, 0.0);
+    kep.initialize(body.state.position, body.state.velocity*1.1, 0.0);
     kep.calc_path_mesh();
     kep2.initialize(body.state.position, body.state.velocity*1.0, 0.0);
     kep2.calc_path_mesh();
@@ -147,7 +149,7 @@ void aimpoint::render() {
     laml::Mat3 eci_to_render(0.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f);
     laml::Mat3 lci_to_render(1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, -1.0f, 0.0f);
     laml::Mat3 render_coord_frame(1.0f);
-    float zoom_level = 1.0f;
+    float frame_zoom_level = 1.0f;
     switch(render_frame_enum) {
         case ECI: {
             render_coord_frame = eci_to_render;
@@ -165,7 +167,7 @@ void aimpoint::render() {
 
             vec3f lci_point = laml::transform::transform_point(eci2lci, earth.fixed_to_inertial(earth.lla_to_fixed(body.launch_lat,body.launch_lon,0.0), 0.0));
             cam_orbit_point = laml::transform::transform_point(lci_to_render, lci_point);
-            zoom_level = 0.25f;
+            frame_zoom_level = 0.25f;
         } break;
         case LCF: {
             mat3f _eci2lci(eci2lci.c_11, eci2lci.c_21, eci2lci.c_31,
@@ -174,12 +176,12 @@ void aimpoint::render() {
             render_coord_frame = laml::mul(lci_to_render, laml::mul(_eci2lci, earth.mat_inertial_to_fixed));
             vec3f lci_point = laml::transform::transform_point(eci2lci, earth.fixed_to_inertial(earth.lla_to_fixed(body.launch_lat,body.launch_lon,0.0), 0.0));
             cam_orbit_point = laml::transform::transform_point(lci_to_render, lci_point);
-            zoom_level = 0.25f;
+            frame_zoom_level = 0.25f;
         } break;
     }
 
     laml::Vec3 cam_pos = cam_orbit_point + 
-                         zoom_level*cam_orbit_distance*laml::Vec3(
+                         zoom_level*frame_zoom_level*cam_orbit_distance*laml::Vec3(
                             laml::cosd(pitch)*laml::sind(yaw), 
                            -laml::sind(pitch), 
                             laml::cosd(pitch)*laml::cosd(yaw));
@@ -224,9 +226,6 @@ void aimpoint::render() {
     renderer.bind_texture(grid_tex);
     renderer.draw_mesh(dot, body.state.position, body.state.orientation);
     vec3d pos_kep;
-    double r_mag_ = laml::length(body.state.position);
-    double v_mag_ = laml::length(body.state.velocity);
-    double h_mag = laml::length(laml::cross(body.state.position, body.state.velocity));
     kep.get_state_vectors(&pos_kep);
     renderer.bind_texture(red_tex);
     renderer.draw_mesh(dot, pos_kep, body.state.orientation);
@@ -235,13 +234,13 @@ void aimpoint::render() {
     kep2.initialize(body.state.position, body.state.velocity, sim_time);
     kep2.calc_path_mesh();
     renderer.draw_path(kep2.path_handle, 100);
-    //vec3d launch_eci = earth.fixed_to_inertial(earth.lla_to_fixed(28.3922, -80.6077, 0.0), 0.0);
-    //for (int n = 0; n < 5; n++) {
-    //    vec3d pos_lci(0.0, 0.0, -0.2*n);
-    //    vec3d pos_eci = launch_eci + laml::transform::transform_point(lci_2_eci, pos_lci);
-    //
-    //    renderer.draw_mesh(dot, pos_eci, laml::Quat(), render_frame);
-    //}
+
+    if (draw_planes) {
+        vec3d h_vec = laml::cross(body.state.position, body.state.velocity);
+        h_vec = laml::normalize(h_vec);
+        renderer.draw_plane(vec3f(h_vec), 10000000);
+        renderer.draw_plane(vec3f(0.0f, 0.0f, 1.0f), 10000000);
+    }
 
     // Draw UI
     renderer.start_debug_UI();
@@ -372,6 +371,12 @@ void aimpoint::render() {
         }
     }
 
+    ImGui::Begin("Zoom", NULL, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
+    //ImGui::Begin("Zoom", NULL, ImGuiWindowFlags_NoTitleBar);
+    ImGui::Text("Zoom: %.1f", zoom_level);
+    ImGui::Text("LogZoom: %.1f", log_zoom_level);
+    ImGui::End();
+
 #if 0
     // Plots
     w_t.add_point(sim_time);
@@ -465,6 +470,11 @@ void aimpoint::key_callback(int key, int scancode, int action, int mods) {
     if (key == GLFW_KEY_A && action == GLFW_RELEASE) {
         show_anomoly_panel = !show_anomoly_panel;
     }
+
+    // orbital planes
+    if (key == GLFW_KEY_P && action == GLFW_RELEASE) {
+        draw_planes = !draw_planes;
+    }
 }
 
 void aimpoint::mouse_pos_callback(double xpos, double ypos) {
@@ -489,6 +499,18 @@ void aimpoint::mouse_button_callback(int button, int action, int mods) {
     if (button == GLFW_MOUSE_BUTTON_2 && action == GLFW_RELEASE) {
         input.mouse2 = false;
     }
+}
+
+void aimpoint::mouse_scroll_callback(double xoffset, double yoffset) {
+    float rate = 0.1f;
+    if ((log_zoom_level >= 2.5f && yoffset > 0.0) || log_zoom_level >= 3.0f) rate = 0.5f;
+    
+    log_zoom_level -= yoffset*rate; // negative to swap dir
+
+    if (log_zoom_level > 10.0f) log_zoom_level = 10.0f;
+    if (log_zoom_level <  1.7f) log_zoom_level =  1.7f;
+
+    zoom_level = log(log_zoom_level);
 }
 
 

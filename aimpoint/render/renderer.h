@@ -29,6 +29,8 @@ struct opengl_renderer {
                    const laml::Quat& orientation = laml::Quat());
     void draw_path(uint32 handle, uint32 N);
 
+    void draw_plane(vec3f normal, float scale);
+
     void start_debug_UI();
     void end_debug_UI();
 
@@ -41,6 +43,8 @@ private:
 
     uint32 basic_shader;
     uint32 line_shader;
+
+    uint32 plane_handle;
 
     mat3f render_frame;
 
