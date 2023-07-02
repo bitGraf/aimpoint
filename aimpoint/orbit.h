@@ -32,8 +32,10 @@ struct orbit {
     void calc_path_mesh();
 
     uint32 path_handle;
+    uint32 path_vbo, path_ebo;
 private:
     // the orbital body
     const planet& body;
 
+    bool path_buffer_created;
 };

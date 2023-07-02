@@ -36,7 +36,7 @@ double true_from_eccentric(const double e, const double eccentric_deg) {
     return true_deg;
 }
 
-orbit::orbit(const planet& set_body) : body(set_body) {}
+orbit::orbit(const planet& set_body) : body(set_body), path_buffer_created(false) {}
 
 void orbit::create_from_state_vectors(const vec3d& r_vec, const vec3d& v_vec, double T) {
     // Reference Frame - ECI
@@ -164,22 +164,30 @@ void orbit::calc_path_mesh() {
     }
 
     // load points into GPU
-    unsigned int VBO, EBO;
-    glGenVertexArrays(1, &path_handle);
-    glGenBuffers(1, &VBO);
-    glGenBuffers(1, &EBO);
+    if (!path_buffer_created) {
+        glGenVertexArrays(1, &path_handle);
+        glGenBuffers(1, &path_vbo);
+        glGenBuffers(1, &path_ebo);
 
-    glBindVertexArray(path_handle);
+        glBindVertexArray(path_handle);
 
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(float)*3*N, path[0]._data, GL_DYNAMIC_DRAW);
+        glBindBuffer(GL_ARRAY_BUFFER, path_vbo);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(float)*3*N, path[0]._data, GL_DYNAMIC_DRAW);
 
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(uint32)*3*N, indices, GL_DYNAMIC_DRAW);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, path_ebo);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(uint32)*3*N, indices, GL_DYNAMIC_DRAW);
 
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+        glEnableVertexAttribArray(0);
 
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glBindVertexArray(0);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+        glBindVertexArray(0);
+
+        path_buffer_created = true;
+    } else {
+        // only need to buffer new data
+        glBindBuffer(GL_ARRAY_BUFFER, path_vbo);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(float)*3*N, path[0]._data, GL_DYNAMIC_DRAW);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+    }
 }
