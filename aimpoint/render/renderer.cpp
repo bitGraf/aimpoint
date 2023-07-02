@@ -47,6 +47,7 @@ int32 opengl_renderer::init_gl_glfw(aimpoint* app_ptr, int32 width, int32 height
     // create window and OpenGL context
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+    glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
     GLFWwindow* window = glfwCreateWindow(window_width, window_height, "Aimpoint", NULL, NULL);
     raw_glfw_window = window;
     if (!window) {
@@ -68,6 +69,7 @@ int32 opengl_renderer::init_gl_glfw(aimpoint* app_ptr, int32 width, int32 height
     
     glDebugMessageCallback(openGL_debug_msg_callback, nullptr);
 
+    // get the actual framebuffer size
     glfwGetFramebufferSize(window, &window_width, &window_height);
     glViewport(0, 0, window_width, window_height);
 
@@ -343,7 +345,8 @@ void opengl_renderer::start_frame(const laml::Vec3& cam_pos, float cam_yaw, floa
                                   const laml::Mat3& new_render_frame){
     render_frame = new_render_frame;
 
-    glClearColor(0.2f, 0.4f, 0.1f, 1.0f);
+    //glClearColor(0.2f, 0.4f, 0.1f, 1.0f);
+    glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     {

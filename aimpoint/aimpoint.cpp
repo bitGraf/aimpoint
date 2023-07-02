@@ -108,7 +108,7 @@ int aimpoint::init() {
     yaw = -65;
     pitch = -15;
 
-    renderer.init_gl_glfw(this, 800, 600);
+    renderer.init_gl_glfw(this, 1280, 720);
 
     // Load mesh from file
     //mesh.load_from_mesh_file("../data/t_bar.mesh");
@@ -258,31 +258,6 @@ void aimpoint::render() {
 
     const ImGuiIO& io = ImGui::GetIO();
 
-    //ImGui::SetNextWindowBgAlpha(0.0f);
-    ImGui::Begin(".", NULL, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
-    switch(render_frame_enum) {
-        case ECI:
-        case ECEF: {
-            ImGui::Text("Earth-Centered");
-        } break;
-        case LCI:
-        case LCF: {
-            ImGui::Text("Launch-Centered");
-        } break;
-    }
-    ImGui::SameLine();
-    switch(render_frame_enum) {
-        case ECI:
-        case LCI: {
-            ImGui::Text("Inertial");
-        } break;
-        case ECEF:
-        case LCF: {
-            ImGui::Text("Fixed");
-        } break;
-    }
-    ImGui::End();
-
     if (show_info_panel) {
         ImGui::Begin("Simulation Info");
 
@@ -381,6 +356,31 @@ void aimpoint::render() {
             ImGui::End();
         }
     }
+
+    //ImGui::SetNextWindowBgAlpha(0.0f);
+    ImGui::Begin("Render Frame", NULL, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
+    switch(render_frame_enum) {
+        case ECI:
+        case ECEF: {
+            ImGui::Text("Earth-Centered");
+        } break;
+        case LCI:
+        case LCF: {
+            ImGui::Text("Launch-Centered");
+        } break;
+    }
+    ImGui::SameLine();
+    switch(render_frame_enum) {
+        case ECI:
+        case LCI: {
+            ImGui::Text("Inertial");
+        } break;
+        case ECEF:
+        case LCF: {
+            ImGui::Text("Fixed");
+        } break;
+    }
+    ImGui::End();
 
     ImGui::Begin("Zoom", NULL, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
     //ImGui::Begin("Zoom", NULL, ImGuiWindowFlags_NoTitleBar);
