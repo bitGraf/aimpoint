@@ -38,7 +38,7 @@ double true_from_eccentric(const double e, const double eccentric_deg) {
 
 orbit::orbit(const planet& set_body) : body(set_body) {}
 
-void orbit::initialize(const vec3d& r_vec, const vec3d& v_vec, double T) {
+void orbit::create_from_state_vectors(const vec3d& r_vec, const vec3d& v_vec, double T) {
     // Reference Frame - ECI
     vec3d I_eci = vec3d(1.0, 0.0, 0.0);
     vec3d J_eci = vec3d(0.0, 1.0, 0.0);

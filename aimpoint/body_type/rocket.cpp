@@ -27,16 +27,20 @@ void rocket::launch(planet* p) {
     earth = p;
 
     LCI2ECI = earth->create_local_inertial(launch_lat, launch_lon, launch_az);
-    state.position = earth->fixed_to_inertial(earth->lla_to_fixed(launch_lat, launch_lon, 0.0));
-    state.velocity = laml::transform::transform_point(LCI2ECI, vec3d(0.0, 0.0, -0.1));
 
-    vec3d pos_ecef = earth->lla_to_fixed(launch_lat, launch_lon, 480000);
-    vec3d vel_ecef(0.0f, 0.0f, 0.0f);
+    // set position to launch site position (inertial)
+    //state.position = earth->fixed_to_inertial(earth->lla_to_fixed(launch_lat, launch_lon, 0.0));
+    //state.velocity = laml::transform::transform_point(LCI2ECI, vec3d(0.0, 0.0, -0.1));
 
-    earth->fixed_to_inertial(pos_ecef, vel_ecef, &state.position, &state.velocity);
+    // set position to launch site position (fixed)
+    //vec3d pos_ecef = earth->lla_to_fixed(launch_lat, launch_lon, 480000);
+    //vec3d vel_ecef(0.0f, 0.0f, 0.0f);
+    //earth->fixed_to_inertial(pos_ecef, vel_ecef, &state.position, &state.velocity);
 
+    // set position to orbit state above launch site
+    state.position = earth->fixed_to_inertial(earth->lla_to_fixed(launch_lat, launch_lon, 480000));
     vec3d v_dir = laml::normalize(laml::cross(vec3d(0.0, 0.0, 1.0), state.position));
-    state.velocity = v_dir * 7700.0;
+    state.velocity = v_dir * 8500.0;
 }
 
 void rocket::major_step(double t, double dt) {

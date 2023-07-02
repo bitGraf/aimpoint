@@ -93,7 +93,7 @@ int aimpoint::run() {
 }
 
 int aimpoint::init() {
-    simulation_rate = 100.0; // Hz
+    simulation_rate = 10.0; // Hz
     sim_frame = 0;
     render_frame = 0;
     real_time = true;
@@ -126,9 +126,9 @@ int aimpoint::init() {
     lci2eci = body.LCI2ECI;
     eci2lci = laml::transpose(lci2eci);
 
-    kep.initialize(body.state.position, body.state.velocity*1.0, 0.0);
+    kep.create_from_state_vectors(body.state.position, body.state.velocity, 0.0);
     kep.calc_path_mesh();
-    kep2.initialize(body.state.position, body.state.velocity*1.0, 0.0);
+    kep2.create_from_state_vectors(body.state.position, body.state.velocity, 0.0);
     kep2.calc_path_mesh();
 
     spdlog::info("Application intitialized");
@@ -165,9 +165,10 @@ void aimpoint::render() {
         pitch -= input.yvel * frame_time * 0.50f;
     }
 
-    if (earth.yaw > 90.0*laml::constants::deg2rad<double>) {
-        bool stop = true;
-    }
+    if (pitch >  89.0f) pitch =  89.0f;
+    if (pitch < -89.0f) pitch = -89.0f;
+    if (yaw > 360.0f) yaw -= 360.0f;
+    if (yaw <   0.0f) yaw += 360.0f;
 
     laml::Mat3 eci_to_render(0.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f);
     laml::Mat3 lci_to_render(1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, -1.0f, 0.0f);
@@ -239,7 +240,7 @@ void aimpoint::render() {
     kep.get_state_vectors(&pos_kep);
     renderer.bind_texture(red_tex);
     renderer.draw_mesh(dot, pos_kep, body.state.orientation);
-    kep2.initialize(body.state.position, body.state.velocity, sim_time);
+    kep2.create_from_state_vectors(body.state.position, body.state.velocity, sim_time);
     kep2.calc_path_mesh();
     renderer.draw_path(kep2.path_handle, 100, vec3f(.3333f, 0.4588f, .5418f));
 
@@ -248,7 +249,7 @@ void aimpoint::render() {
         vec3d h_vec = laml::cross(body.state.position, body.state.velocity);
         h_vec = laml::normalize(h_vec);
         renderer.draw_plane(vec3f(h_vec),            20000000, vec3f(1.0f, 0.96f, 0.68f), 0.7f);
-        renderer.draw_plane(vec3f(0.0f, 0.0f, 1.0f), 20000000, vec3f(0.8f, 0.70f, 0.80f), 0.5f);
+        renderer.draw_plane(vec3f(0.0f, 0.0f, 1.0f), 50000000, vec3f(0.8f, 0.70f, 0.80f), 0.3f);
 
         renderer.draw_vector(h_vec, 10000000, vec3f(1.0f, 0.96f, 0.68f));
     }
@@ -259,84 +260,61 @@ void aimpoint::render() {
     const ImGuiIO& io = ImGui::GetIO();
 
     if (show_info_panel) {
-        ImGui::Begin("Simulation Info");
+        ImGui::Begin("App Info", NULL, ImGuiWindowFlags_NoResize);
 
         static uint64 last_frames = 0;
         double steps_per_second = (double)(sim_frame - last_frames);
         last_frames = sim_frame;
         double sim_scale = io.Framerate * steps_per_second * (1.0/simulation_rate);
         sim_scale_history.add_point(sim_scale);
-        ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
+        ImGui::Text("Avg. %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
+        ImGui::Text("Timestep: %.3f s (%.1f Hz)", (1.0/simulation_rate), simulation_rate);
         ImGui::Text("Sim Scale: %5.1fX", sim_scale_history.get_avg());
-        //ImGui::Text("xpos=%.1f   ypos=%.1f", input.xpos, input.ypos);
-        //ImGui::Text("xvel=%.1f   yvel=%.1f", input.xvel, input.yvel);
         ImGui::Separator();
-
-        //ImGui::Text("Mouse Buttons:");
-        //ImGui::Text("M1:%s    M2:%s", input.mouse1 ? "Pressed" : "Released", input.mouse2 ? "Pressed" : "Released");
-        //ImGui::Separator();
 
         ImGui::Text("Camera State:");
         ImGui::Text("Yaw:%.2f    Pitch:%.2f", yaw, pitch);
-        ImGui::Text("[%.1f, %.1f, %.1f]", cam_pos.x, cam_pos.y, cam_pos.z);
+        //ImGui::Text("[%.1f, %.1f, %.1f]", cam_pos.x, cam_pos.y, cam_pos.z);
         ImGui::Separator();
 
         ImGui::Text("Earth State:");
         ImGui::Text("Yaw:%.2f", earth.yaw*laml::constants::rad2deg<double>);
-        ImGui::Text("Rendering Frame: %s", render_frame_enum == ECI ? "Inertial" : (render_frame_enum == ECEF ? "Fixed" : "LCI"));
-        ImGui::Separator();
-
-        ImGui::Text("Rocket State:");
-        ImGui::Text("Pos: [%.2f, %.2f, %.2f] km", body.state.position.x/1000.0, body.state.position.y/1000.0, body.state.position.z/1000.0);
-        ImGui::Text("Vel: [%.2f, %.2f, %.2f] m/s", body.state.velocity.x, body.state.velocity.y, body.state.velocity.z);
-        ImGui::Text("Acc: [%.2f, %.2f, %.2f] m/s^2", body.derivative.acceleration.x, body.derivative.acceleration.y, body.derivative.acceleration.z);
-        //ImGui::Text("Rendering Frame: %s", render_frame_enum == 0 ? "Inertial" : "Fixed");
-        ImGui::Separator();
 
         ImGui::End();
     }
 
     if (show_keplerian_panel) {
-        ImGui::Begin("Keplerian Elements");
+        ImGui::Begin("Keplerian Elements", NULL, ImGuiWindowFlags_NoResize);
 
-        /*
-        double eccentricity;
-        double semimajor_axis;
-        double inclination;
-        double right_ascension;
-        double argument_of_periapsis;
-        double mean_anomaly;
-
-        double mean_motion;
-        double period;
-         */
-
+        ImGui::Text("Keplerian Orbit Propagation");
         ImGui::Text("Eccentricity: %.5f", kep.eccentricity);
         ImGui::Text("Semimajor Axis: %.1f km", kep.semimajor_axis/1000.0);
         ImGui::Text("Inclination: %.2f deg", kep.inclination);
         ImGui::Text("RAAN: %.2f deg", kep.right_ascension);
         ImGui::Text("Arg. of Periapsis: %.2f deg", kep.argument_of_periapsis);
         ImGui::Text("Mean Anomaly (Epoch): %.2f deg", kep.mean_anomaly_at_epoch);
-        ImGui::Separator();
-        ImGui::Text("Mean Anomaly: %.5f deg", kep.mean_anomaly);
-        ImGui::Text("Ecc  Anomaly: %.5f deg", kep.eccentric_anomaly);
-        ImGui::Text("True Anomaly: %.5f deg", kep.true_anomaly);
-        ImGui::Text("Mean Motion: %.5f deg/s", kep.mean_motion);
         ImGui::Text("Period: %.3f min", kep.period / 60.0);
         ImGui::Separator();
 
+        ImGui::Text("Num. Integration with J2 Perturbation");
         ImGui::Text("Eccentricity: %.5f", kep2.eccentricity);
         ImGui::Text("Semimajor Axis: %.1f km", kep2.semimajor_axis/1000.0);
         ImGui::Text("Inclination: %.2f deg", kep2.inclination);
         ImGui::Text("RAAN: %.2f deg", kep2.right_ascension);
         ImGui::Text("Arg. of Periapsis: %.2f deg", kep2.argument_of_periapsis);
         ImGui::Text("Mean Anomaly (Epoch): %.2f deg", kep2.mean_anomaly_at_epoch);
+        ImGui::Text("Period: %.3f min", kep2.period / 60.0);
         ImGui::Separator();
 
         ImGui::End();
 
         if (show_anomoly_panel) {
-            ImGui::Begin("Anomalies");
+            ImGui::Begin("Anomalies", NULL, ImGuiWindowFlags_NoResize);
+
+            ImGui::Text("Mean Anomaly: %.5f deg", kep.mean_anomaly);
+            ImGui::Text("Ecc  Anomaly: %.5f deg", kep.eccentric_anomaly);
+            ImGui::Text("True Anomaly: %.5f deg", kep.true_anomaly);
+            ImGui::Separator();
 
             double history = t.length;
             static ImPlotAxisFlags flags = ImPlotAxisFlags_NoTickLabels;
@@ -385,7 +363,7 @@ void aimpoint::render() {
     ImGui::Begin("Zoom", NULL, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
     //ImGui::Begin("Zoom", NULL, ImGuiWindowFlags_NoTitleBar);
     ImGui::Text("Zoom: %.1f", zoom_level);
-    ImGui::Text("LogZoom: %d", log_zoom_level);
+    //ImGui::Text("LogZoom: %d", log_zoom_level);
     ImGui::End();
 
     ImGui::Begin("Clock", NULL, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
@@ -395,37 +373,9 @@ void aimpoint::render() {
     ImGui::Text("T: %.1f %s", value, unit);
     ImGui::End();
 
-#if 0
-    // Plots
-    w_t.add_point(sim_time);
-    w_x.add_point(body.state.ang_velocity.x);
-    w_y.add_point(body.state.ang_velocity.y);
-    w_z.add_point(body.state.ang_velocity.z);
-
-    ImGui::Begin("Body Rates");
-    double history = w_t.length * (1.0/60.0);
-    static ImPlotAxisFlags flags = ImPlotAxisFlags_NoTickLabels;
-    if (ImPlot::BeginPlot("##Scrolling")) {
-        ImPlot::SetupAxes(nullptr, nullptr, flags, flags);
-        ImPlot::SetupAxisLimits(ImAxis_X1,sim_time - history, sim_time, ImGuiCond_Always);
-        ImPlot::SetupAxisLimits(ImAxis_Y1,-10,10);
-        ImPlot::SetNextFillStyle(IMPLOT_AUTO_COL,0.5f);
-
-        ImPlot::PlotLine("Body X", w_t.data, w_x.data, w_t.length, 0, w_t.offset, sizeof(double));
-        ImPlot::PlotLine("Body Y", w_t.data, w_y.data, w_t.length, 0, w_t.offset, sizeof(double));
-        ImPlot::PlotLine("Body Z", w_t.data, w_z.data, w_t.length, 0, w_t.offset, sizeof(double));
-
-        ImPlot::EndPlot();
-    }
-    ImGui::End();
-#endif
-
     renderer.end_debug_UI();
 
     renderer.end_frame();
-
-    //spdlog::trace("[{0:0.3f}] ({1:0.3f}) render step", sim_time, alpha);
-    //spdlog::trace("[{0:0.3f}] render step", sim_time);
 
     render_frame++;
 }

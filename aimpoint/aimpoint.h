@@ -97,7 +97,8 @@ private:
 
     float cam_orbit_distance;
     laml::Vec3 cam_orbit_point;
-    float yaw, pitch;
+    float yaw;   // [  0, 360]
+    float pitch; // [-89,  89]
     mat3d lci2eci, eci2lci;
 
     struct {
