@@ -93,10 +93,22 @@ void planet::fixed_to_inertial(vec3d pos_fixed, vec3d vel_fixed, double t, vec3d
 }
 
 vec3d planet::gravity(vec3d pos_inertial) {
-    vec3d r_mag = laml::length(pos_inertial);
+    double r_mag = laml::length(pos_inertial);
     vec3d r_unit = pos_inertial / r_mag;
 
-    return -gm * r_unit / (r_mag*r_mag);
+    const double J2 = 1.75553e10 * (1.0e15);
+    const double x = pos_inertial.x;
+    const double y = pos_inertial.y;
+    const double z = pos_inertial.z;
+    const double r_7 = r_mag*r_mag*r_mag*r_mag*r_mag*r_mag*r_mag;
+
+    double F_j2_x = J2*x*(6*z*z - 1.5*(x*x + y*y)) / r_7;
+    double F_j2_y = J2*y*(6*z*z - 1.5*(x*x + y*y)) / r_7;
+    double F_j2_z = J2*z*(3*z*z - 4.5*(x*x + y*y)) / r_7;
+
+    vec3d f_grav = -gm * r_unit / (r_mag*r_mag);
+
+    return f_grav + vec3d(F_j2_x, F_j2_y, F_j2_z);
 }
 
 mat3d planet::create_local_inertial(double lat, double lon, double az) {

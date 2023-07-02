@@ -24,12 +24,16 @@ struct orbit {
     double periapsis_alt;
     double apoapsis_alt;
 
-    void initialize(const vec3d& pos_eci, const vec3d& vel_eci);
+    void initialize(const vec3d& pos_eci, const vec3d& vel_eci, double T);
     void calc_params(double t);
     void advance(double dt);
     void get_state_vectors(vec3d* pos_eci = nullptr, vec3d* vel_eci = nullptr);
 
+    void calc_path_mesh();
+
+    uint32 path_handle;
 private:
     // the orbital body
     const planet& body;
+
 };

@@ -38,7 +38,7 @@ double true_from_eccentric(const double e, const double eccentric_deg) {
 
 orbit::orbit(const planet& set_body) : body(set_body) {}
 
-void orbit::initialize(const vec3d& r_vec, const vec3d& v_vec) {
+void orbit::initialize(const vec3d& r_vec, const vec3d& v_vec, double T) {
     // Reference Frame - ECI
     vec3d I_eci = vec3d(1.0, 0.0, 0.0);
     vec3d J_eci = vec3d(0.0, 1.0, 0.0);
@@ -88,7 +88,12 @@ void orbit::initialize(const vec3d& r_vec, const vec3d& v_vec) {
     eccentric_anomaly = laml::acosd_safe((eccentricity + laml::cosd(true_anomaly)) / (1 + eccentricity*laml::cosd(true_anomaly)), trig_tol);
     if (true_anomaly > 180.0)
         eccentric_anomaly = 360.0 - eccentric_anomaly;
-    mean_anomaly_at_epoch = eccentric_anomaly - eccentricity*laml::sind(eccentric_anomaly)*laml::constants::rad2deg<double>;
+    mean_anomaly = eccentric_anomaly - eccentricity*laml::sind(eccentric_anomaly)*laml::constants::rad2deg<double>;
+
+    period = 2*laml::constants::pi<double>*sqrt(semimajor_axis*semimajor_axis*semimajor_axis / body.gm);
+    mean_motion = 360.0 / period; // deg/s
+
+    mean_anomaly_at_epoch = fmod(mean_anomaly - T*mean_motion, 360.0);
 
     // calculate other params
     calc_params(0.0);
@@ -126,11 +131,55 @@ void orbit::get_state_vectors(vec3d* pos_eci, vec3d* vel_eci) {
     v_mag = laml::length(v_w);
 
     laml::Mat3_highp rot;
-    //laml::transform::create_ZXZ_rotation(rot, -argument_of_periapsis, -inclination, -right_ascension);
     laml::transform::create_ZXZ_rotation(rot, right_ascension, inclination, argument_of_periapsis);
 
     if (pos_eci)
         *pos_eci = laml::transform::transform_point(rot, r_w);
     if (vel_eci)
         *vel_eci = laml::transform::transform_point(rot, v_w);
+}
+
+#include <glad/gl.h>
+void orbit::calc_path_mesh() {
+    laml::Mat3_highp rot;
+    laml::transform::create_ZXZ_rotation(rot, right_ascension, inclination, argument_of_periapsis);
+    double semiminor_axis = semimajor_axis*sqrt(1 - eccentricity*eccentricity);
+    double h = mean_motion*semimajor_axis*semiminor_axis*laml::constants::deg2rad<double>;
+
+    // sample the orbit at N points along the orbit for rendering
+    const size_t N = 100;
+    const double spacing = 360.0 / N;
+    vec3f path[N];
+    uint32 indices[N];
+
+    for (int n = 0; n < N; n++) {
+        double theta = spacing*n; // treat at True Anomaly
+
+        // first calculate in perifocal frame
+        double r_mag = (h*h / body.gm) * 1.0 / (1 + eccentricity*laml::cosd(theta));
+        vec3d r_w(r_mag*laml::cosd(theta), r_mag*laml::sind(theta), 0.0);
+
+        path[n] = laml::transform::transform_point(rot, r_w);
+        indices[n] = n;
+    }
+
+    // load points into GPU
+    unsigned int VBO, EBO;
+    glGenVertexArrays(1, &path_handle);
+    glGenBuffers(1, &VBO);
+    glGenBuffers(1, &EBO);
+
+    glBindVertexArray(path_handle);
+
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(float)*3*N, path[0]._data, GL_STATIC_DRAW);
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(uint32)*3*N, indices, GL_STATIC_DRAW);
+
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
 }

@@ -54,7 +54,7 @@ enum coordinate_frame : int {
 
 struct aimpoint {
 public:
-    aimpoint() : kep(earth) {}
+    aimpoint() : kep(earth), kep2(earth) {}
     int run();
 
     void key_callback(int key, int scancode, int action, int mods);
@@ -87,7 +87,7 @@ private:
     coordinate_frame render_frame_enum = ECI;
 
     planet earth;
-    orbit kep;
+    orbit kep, kep2;
     rocket body;
 
     float cam_orbit_distance;

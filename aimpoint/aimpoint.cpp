@@ -70,7 +70,7 @@ int aimpoint::run() {
 }
 
 int aimpoint::init() {
-    simulation_rate = 200.0; // Hz
+    simulation_rate = 1.0; // Hz
     sim_frame = 0;
     render_frame = 0;
     real_time = true;
@@ -101,7 +101,10 @@ int aimpoint::init() {
     lci2eci = body.LCI2ECI;
     eci2lci = laml::transpose(lci2eci);
 
-    kep.initialize(body.state.position, body.state.velocity*1.1);
+    kep.initialize(body.state.position, body.state.velocity*1.0, 0.0);
+    kep.calc_path_mesh();
+    kep2.initialize(body.state.position, body.state.velocity*1.0, 0.0);
+    kep2.calc_path_mesh();
 
     spdlog::info("Application intitialized");
 
@@ -227,6 +230,11 @@ void aimpoint::render() {
     kep.get_state_vectors(&pos_kep);
     renderer.bind_texture(red_tex);
     renderer.draw_mesh(dot, pos_kep, body.state.orientation);
+    renderer.draw_path(kep.path_handle, 100);
+
+    kep2.initialize(body.state.position, body.state.velocity, sim_time);
+    kep2.calc_path_mesh();
+    renderer.draw_path(kep2.path_handle, 100);
     //vec3d launch_eci = earth.fixed_to_inertial(earth.lla_to_fixed(28.3922, -80.6077, 0.0), 0.0);
     //for (int n = 0; n < 5; n++) {
     //    vec3d pos_lci(0.0, 0.0, -0.2*n);
@@ -330,6 +338,14 @@ void aimpoint::render() {
         ImGui::Text("True Anomaly: %.5f deg", kep.true_anomaly);
         ImGui::Text("Mean Motion: %.5f deg/s", kep.mean_motion);
         ImGui::Text("Period: %.3f min", kep.period / 60.0);
+        ImGui::Separator();
+
+        ImGui::Text("Eccentricity: %.5f", kep2.eccentricity);
+        ImGui::Text("Semimajor Axis: %.1f km", kep2.semimajor_axis/1000.0);
+        ImGui::Text("Inclination: %.2f deg", kep2.inclination);
+        ImGui::Text("RAAN: %.2f deg", kep2.right_ascension);
+        ImGui::Text("Arg. of Periapsis: %.2f deg", kep2.argument_of_periapsis);
+        ImGui::Text("Mean Anomaly (Epoch): %.2f deg", kep2.mean_anomaly_at_epoch);
         ImGui::Separator();
 
         ImGui::End();

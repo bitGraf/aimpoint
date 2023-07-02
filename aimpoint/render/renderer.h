@@ -27,6 +27,7 @@ struct opengl_renderer {
     void draw_mesh(const triangle_mesh& mesh,
                    const laml::Vec3& position = laml::Vec3(),
                    const laml::Quat& orientation = laml::Quat());
+    void draw_path(uint32 handle, uint32 N);
 
     void start_debug_UI();
     void end_debug_UI();
@@ -38,7 +39,8 @@ private:
 
     void* raw_glfw_window;
 
-    uint32 shader;
+    uint32 basic_shader;
+    uint32 line_shader;
 
     mat3f render_frame;
 

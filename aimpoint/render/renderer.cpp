@@ -30,7 +30,7 @@ opengl_renderer::opengl_renderer() : raw_glfw_window(nullptr),
                                      window_height(48) {}
 
 int32 opengl_renderer::init_gl_glfw(aimpoint* app_ptr, int32 width, int32 height) {
-    window_width  = width;
+    window_width = width;
     window_height = height;
 
     // setup glfw
@@ -93,11 +93,11 @@ int32 opengl_renderer::init_gl_glfw(aimpoint* app_ptr, int32 width, int32 height
     glShaderSource(vertexShader, 1, &vertexShaderSource, NULL);
     glCompileShader(vertexShader);
 
-    int  success;
+    int success;
     char infoLog[512];
     glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
 
-    if(!success) {
+    if (!success) {
         glGetShaderInfoLog(vertexShader, 512, NULL, infoLog);
         spdlog::critical("ERROR::SHADER::VERTEX::COMPILATION_FAILED\n{0}", infoLog);
         return 3;
@@ -125,7 +125,7 @@ int32 opengl_renderer::init_gl_glfw(aimpoint* app_ptr, int32 width, int32 height
 
     glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
 
-    if(!success) {
+    if (!success) {
         glGetShaderInfoLog(fragmentShader, 512, NULL, infoLog);
         spdlog::critical("ERROR::SHADER::FRAGMENT::COMPILATION_FAILED\n{0}", infoLog);
         return 3;
@@ -139,17 +139,81 @@ int32 opengl_renderer::init_gl_glfw(aimpoint* app_ptr, int32 width, int32 height
     glLinkProgram(shaderProgram);
 
     glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
+    if (!success) {
+        glGetProgramInfoLog(shaderProgram, 512, NULL, infoLog);
+        spdlog::critical("ERROR::SHADER::LINKING_FAILED\n{0}", infoLog);
+        return 3;
+    }
+
+    basic_shader = shaderProgram;
+    glUseProgram(shaderProgram);
+
+    glDeleteShader(vertexShader);
+    glDeleteShader(fragmentShader);
+
+    // create basic shader
+    const char *lineVertexShaderSource = "#version 430 core\n"
+                                         "layout (location = 0) in vec3 a_Position;\n"
+                                         "layout (location = 1) uniform mat4 r_View;\n"
+                                         "layout (location = 2) uniform mat4 r_Projection;\n"
+                                         "layout (location = 3) uniform mat4 r_Transform;\n"
+                                         "void main() {\n"
+                                         "    gl_Position = r_Projection * r_View * r_Transform * vec4(a_Position, 1.0);\n"
+                                         "}\n";
+
+    vertexShader = glCreateShader(GL_VERTEX_SHADER);
+
+    glShaderSource(vertexShader, 1, &lineVertexShaderSource, NULL);
+    glCompileShader(vertexShader);
+
+    glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
+
+    if(!success) {
+        glGetShaderInfoLog(vertexShader, 512, NULL, infoLog);
+        spdlog::critical("ERROR::SHADER::VERTEX::COMPILATION_FAILED\n{0}", infoLog);
+        return 3;
+    }
+
+    const char *lineFragmentShaderSource = "#version 430 core\n"
+                                       "out vec4 FragColor;\n"
+                                       "void main()\n"
+                                       "{\n"
+                                       "   vec3 color = vec3(.3333f, 0.4588f, .5418f);\n"
+                                       "   FragColor = vec4(color, 1.0f);\n"
+                                       "}\0";
+
+    fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+    glShaderSource(fragmentShader, 1, &lineFragmentShaderSource, NULL);
+    glCompileShader(fragmentShader);
+
+    glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
+
+    if(!success) {
+        glGetShaderInfoLog(fragmentShader, 512, NULL, infoLog);
+        spdlog::critical("ERROR::SHADER::FRAGMENT::COMPILATION_FAILED\n{0}", infoLog);
+        return 3;
+    }
+
+    shaderProgram = glCreateProgram();
+
+    glAttachShader(shaderProgram, vertexShader);
+    glAttachShader(shaderProgram, fragmentShader);
+    glLinkProgram(shaderProgram);
+
+    glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
     if(!success) {
         glGetProgramInfoLog(shaderProgram, 512, NULL, infoLog);
         spdlog::critical("ERROR::SHADER::LINKING_FAILED\n{0}", infoLog);
         return 3;
     }
 
-    shader = shaderProgram;
+    line_shader = shaderProgram;
     glUseProgram(shaderProgram);
 
     glDeleteShader(vertexShader);
     glDeleteShader(fragmentShader);
+
+    glLineWidth(4.0f);
 
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
@@ -231,20 +295,43 @@ void opengl_renderer::start_frame(const laml::Vec3& cam_pos, float cam_yaw, floa
     glClearColor(0.2f, 0.4f, 0.1f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    glUseProgram(shader);
+    {
+        glUseProgram(line_shader);
 
-    laml::Mat4 cam_transform, view_matrix;
-    laml::transform::create_transform(cam_transform, cam_yaw, cam_pitch, 0.0f, cam_pos);
-    laml::transform::create_view_matrix_from_transform(view_matrix, cam_transform);
-    int viewLocation = glGetUniformLocation(shader, "r_View");
-    glUniformMatrix4fv(viewLocation, 1, GL_FALSE, view_matrix._data);
+        laml::Mat4 cam_transform, view_matrix;
+        laml::transform::create_transform(cam_transform, cam_yaw, cam_pitch, 0.0f, cam_pos);
+        laml::transform::create_view_matrix_from_transform(view_matrix, cam_transform);
+        int viewLocation = glGetUniformLocation(line_shader, "r_View");
+        glUniformMatrix4fv(viewLocation, 1, GL_FALSE, view_matrix._data);
 
-    laml::Mat4 projection_matrix;
-    float AR = ((float)window_width / (float)window_height);
-    laml::transform::create_projection_perspective(projection_matrix, 75.0f, AR, 1000.0f, 20'000'000.0f);
-    //laml::transform::create_projection_orthographic(projection_matrix, -10.0f, 10.0f, -10.0f, 10.0f, -10.0f, 10.0f);
-    int projLocation = glGetUniformLocation(shader, "r_Projection");
-    glUniformMatrix4fv(projLocation, 1, GL_FALSE, projection_matrix._data);
+        laml::Mat4 projection_matrix;
+        float AR = ((float)window_width / (float)window_height);
+        laml::transform::create_projection_perspective(projection_matrix, 75.0f, AR, 1000.0f, 20'000'000.0f);
+        //laml::transform::create_projection_orthographic(projection_matrix, -10.0f, 10.0f, -10.0f, 10.0f, -10.0f, 10.0f);
+        int projLocation = glGetUniformLocation(line_shader, "r_Projection");
+        glUniformMatrix4fv(projLocation, 1, GL_FALSE, projection_matrix._data);
+
+        //laml::Mat4 transform_matrix(1.0f);
+        //int transformLocation = glGetUniformLocation(line_shader, "r_Transform");
+        //glUniformMatrix4fv(transformLocation, 1, GL_FALSE, transform_matrix._data);
+    }
+
+    {
+        glUseProgram(basic_shader);
+
+        laml::Mat4 cam_transform, view_matrix;
+        laml::transform::create_transform(cam_transform, cam_yaw, cam_pitch, 0.0f, cam_pos);
+        laml::transform::create_view_matrix_from_transform(view_matrix, cam_transform);
+        int viewLocation = glGetUniformLocation(basic_shader, "r_View");
+        glUniformMatrix4fv(viewLocation, 1, GL_FALSE, view_matrix._data);
+
+        laml::Mat4 projection_matrix;
+        float AR = ((float)window_width / (float)window_height);
+        laml::transform::create_projection_perspective(projection_matrix, 75.0f, AR, 1000.0f, 20'000'000.0f);
+        //laml::transform::create_projection_orthographic(projection_matrix, -10.0f, 10.0f, -10.0f, 10.0f, -10.0f, 10.0f);
+        int projLocation = glGetUniformLocation(basic_shader, "r_Projection");
+        glUniformMatrix4fv(projLocation, 1, GL_FALSE, projection_matrix._data);
+    }
 }
 
 void opengl_renderer::bind_texture(const texture& tex) {
@@ -255,19 +342,35 @@ void opengl_renderer::bind_texture(const texture& tex) {
 void opengl_renderer::draw_mesh(const triangle_mesh& mesh, 
                                 const laml::Vec3& position, 
                                 const laml::Quat& orientation) {
+    glUseProgram(basic_shader);
+
     laml::Mat4 transform_matrix;
     //laml::transform::create_transform_translate(transform_matrix, position);
     //transform_matrix = laml::mul(laml::Mat4(render_frame), transform_matrix);
     laml::Quat r = laml::transform::quat_from_mat(render_frame);
 
     laml::transform::create_transform(transform_matrix, laml::mul(r, orientation), laml::transform::transform_point(render_frame, position));
-    int transformLocation = glGetUniformLocation(shader, "r_Transform");
+    int transformLocation = glGetUniformLocation(basic_shader, "r_Transform");
     glUniformMatrix4fv(transformLocation, 1, GL_FALSE, transform_matrix._data);
 
     for (int n = 0; n < mesh.num_prims; n++) {
         glBindVertexArray(mesh.handles[n]);
         glDrawElements(GL_TRIANGLES, mesh.num_inds[n], GL_UNSIGNED_INT, 0);
     }
+}
+
+void opengl_renderer::draw_path(uint32 handle, uint32 N) {
+    glUseProgram(line_shader);
+
+    laml::Mat4 transform_matrix;
+    laml::Quat r = laml::transform::quat_from_mat(render_frame);
+
+    laml::transform::create_transform_rotation(transform_matrix, r);
+    int transformLocation = glGetUniformLocation(line_shader, "r_Transform");
+    glUniformMatrix4fv(transformLocation, 1, GL_FALSE, transform_matrix._data);
+
+    glBindVertexArray(handle);
+    glDrawElements(GL_LINE_LOOP, N, GL_UNSIGNED_INT, 0);
 }
 
 void opengl_renderer::start_debug_UI() {    
