@@ -52,17 +52,17 @@ void orbit::create_from_state_vectors(const vec3d& r_vec, const vec3d& v_vec, do
 
     // angular momentum
     vec3d h_vec = laml::cross(r_vec, v_vec);
-    double h_mag = laml::length(h_vec);
-    vec3d h_hat = h_vec / h_mag;
+    specific_ang_momentum = laml::length(h_vec);
+    specific_ang_momentum_unit = h_vec / specific_ang_momentum;
 
     // inclination
-    //inclination = laml::acosd(laml::dot(K_eci, h_vec) / h_mag);
-    inclination = laml::acosd_safe(h_vec.z / h_mag, trig_tol); // inclination is [0,180] so ambigious acos() is fine.
+    inclination = laml::acosd_safe(h_vec.z / specific_ang_momentum, trig_tol); // inclination is [0,180] so ambigious acos() is fine.
 
     // right ascension of the ascending node (RAAN)
     //vec3d k_hat = h_vec / h_mag; // orbit axis
     vec3d n_vec = laml::cross(K_eci, h_vec);
     double n_mag = laml::length(n_vec);
+    ascending_node_unit = n_vec / n_mag;
     //right_ascension = laml::acosd(laml::dot(I_eci, n_vec) / n_mag);
     right_ascension = laml::acosd_safe(n_vec.x / n_mag, trig_tol);
     if (n_vec.y < 0.0) // acos is [0,180] but RAAN is [0,360], so need to determine proper quadrant
@@ -73,7 +73,7 @@ void orbit::create_from_state_vectors(const vec3d& r_vec, const vec3d& v_vec, do
     vec3d e_vec = laml::cross(v_vec, h_vec) / body.gm - r_hat;
     eccentricity = laml::length(e_vec);
     vec3d e_hat = e_vec / eccentricity;
-    double semi_latus = h_mag*h_mag / body.gm;
+    double semi_latus = specific_ang_momentum*specific_ang_momentum / body.gm;
     semimajor_axis = semi_latus / (1 - eccentricity*eccentricity);
 
     // arg. of periapsis
@@ -96,7 +96,9 @@ void orbit::create_from_state_vectors(const vec3d& r_vec, const vec3d& v_vec, do
     mean_anomaly_at_epoch = fmod(mean_anomaly - T*mean_motion, 360.0);
 
     // calculate other params
-    calc_params(T);
+    periapsis_alt = semimajor_axis*(1 + eccentricity) - body.equatorial_radius;
+    apoapsis_alt = semimajor_axis*(1 - eccentricity) - body.equatorial_radius;
+    laml::transform::create_ZXZ_rotation(perifocal_to_inertial, right_ascension, inclination, argument_of_periapsis);
 }
 
 void orbit::advance(double dt) {
@@ -108,20 +110,9 @@ void orbit::advance(double dt) {
     true_anomaly = true_from_eccentric(eccentricity, eccentric_anomaly);
 }
 
-void orbit::calc_params(double t) {
-    period = 2*laml::constants::pi<double>*sqrt(semimajor_axis*semimajor_axis*semimajor_axis / body.gm);
-    mean_motion = 360.0 / period; // deg/s
-    periapsis_alt = semimajor_axis*(1 + eccentricity) - body.equatorial_radius;
-    apoapsis_alt = semimajor_axis*(1 - eccentricity) - body.equatorial_radius;
-
-    mean_anomaly = mean_anomaly_at_epoch + mean_motion*t;
-    eccentric_anomaly = eccentric_from_mean(eccentricity, mean_anomaly, eccentric_anomaly);
-    true_anomaly = true_from_eccentric(eccentricity, eccentric_anomaly);
-}
-
 void orbit::get_state_vectors(vec3d* pos_eci, vec3d* vel_eci) {
     double semiminor_axis = semimajor_axis*sqrt(1 - eccentricity*eccentricity);
-    double h = mean_motion*semimajor_axis*semiminor_axis*laml::constants::deg2rad<double>;
+    double h = specific_ang_momentum;
 
     // first calculate in perifocal frame
     double r_mag = (h*h / body.gm) * 1.0 / (1 + eccentricity*laml::cosd(true_anomaly));
@@ -130,21 +121,16 @@ void orbit::get_state_vectors(vec3d* pos_eci, vec3d* vel_eci) {
     vec3d v_w(-v_mag*laml::sind(true_anomaly), v_mag*(eccentricity + laml::cosd(true_anomaly)), 0.0);
     v_mag = laml::length(v_w);
 
-    laml::Mat3_highp rot;
-    laml::transform::create_ZXZ_rotation(rot, right_ascension, inclination, argument_of_periapsis);
-
     if (pos_eci)
-        *pos_eci = laml::transform::transform_point(rot, r_w);
+        *pos_eci = laml::transform::transform_point(perifocal_to_inertial, r_w);
     if (vel_eci)
-        *vel_eci = laml::transform::transform_point(rot, v_w);
+        *vel_eci = laml::transform::transform_point(perifocal_to_inertial, v_w);
 }
 
 #include <glad/gl.h>
 void orbit::calc_path_mesh() {
-    laml::Mat3_highp rot;
-    laml::transform::create_ZXZ_rotation(rot, right_ascension, inclination, argument_of_periapsis);
     double semiminor_axis = semimajor_axis*sqrt(1 - eccentricity*eccentricity);
-    double h = mean_motion*semimajor_axis*semiminor_axis*laml::constants::deg2rad<double>;
+    double h = specific_ang_momentum;
 
     // sample the orbit at N points along the orbit for rendering
     const size_t N = 100;
@@ -159,7 +145,7 @@ void orbit::calc_path_mesh() {
         double r_mag = (h*h / body.gm) * 1.0 / (1 + eccentricity*laml::cosd(theta));
         vec3d r_w(r_mag*laml::cosd(theta), r_mag*laml::sind(theta), 0.0);
 
-        path[n] = laml::transform::transform_point(rot, r_w);
+        path[n] = laml::transform::transform_point(perifocal_to_inertial, r_w);
         indices[n] = n;
     }
 

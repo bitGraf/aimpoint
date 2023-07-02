@@ -50,6 +50,7 @@ enum coordinate_frame : int {
     ECEF = 1,
     LCI = 2,
     LCF = 3,
+    ECLIPTIC = 4,
 };
 
 struct aimpoint {
@@ -85,6 +86,7 @@ private:
     bool show_keplerian_panel = false;
     bool show_anomoly_panel = false;
     bool draw_planes = false;
+    bool draw_ground_tracks = false;
 
     opengl_renderer renderer;
     triangle_mesh mesh, dot;

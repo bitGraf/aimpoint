@@ -4,6 +4,7 @@
 struct texture {
 
     bool load_texture_file(const char* filename);
+    uint32 get_handle() const { return handle; }
 
 private:
     uint32 width = 0;

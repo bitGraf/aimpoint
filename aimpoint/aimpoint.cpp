@@ -183,6 +183,12 @@ void aimpoint::render() {
             render_coord_frame = laml::mul(eci_to_render, earth.mat_inertial_to_fixed);
             cam_orbit_point = vec3f(0.0f);
         } break;
+        case ECLIPTIC: {
+            mat3f ecliptic_rot;
+            laml::transform::create_ZXZ_rotation(ecliptic_rot, 0.0f, 23.4362f, 0.0f);
+            render_coord_frame = laml::mul(eci_to_render, ecliptic_rot);
+            cam_orbit_point = vec3f(0.0f);
+        } break;
         case LCI: {
             mat3f _eci2lci(eci2lci.c_11, eci2lci.c_21, eci2lci.c_31,
                            eci2lci.c_12, eci2lci.c_22, eci2lci.c_32,
@@ -236,8 +242,8 @@ void aimpoint::render() {
     renderer.draw_path(kep.path_handle,  100, vec3f(.3333f, 0.4588f, .5418f));
 
     // Orbit from orbit integrator
-    vec3d pos_kep;
-    kep.get_state_vectors(&pos_kep);
+    vec3d pos_kep, vel_kep;
+    kep.get_state_vectors(&pos_kep, &vel_kep);
     renderer.bind_texture(red_tex);
     renderer.draw_mesh(dot, pos_kep, body.state.orientation);
     kep2.create_from_state_vectors(body.state.position, body.state.velocity, sim_time);
@@ -246,18 +252,37 @@ void aimpoint::render() {
 
     // draw orbit/equatorial planes
     if (draw_planes) {
-        vec3d h_vec = laml::cross(body.state.position, body.state.velocity);
-        h_vec = laml::normalize(h_vec);
-        renderer.draw_plane(vec3f(h_vec),            20000000, vec3f(1.0f, 0.96f, 0.68f), 0.7f);
-        renderer.draw_plane(vec3f(0.0f, 0.0f, 1.0f), 50000000, vec3f(0.8f, 0.70f, 0.80f), 0.3f);
+        renderer.draw_vector(kep2.specific_ang_momentum_unit,  8000000, vec3f(1.0f, 0.96f, 0.68f));
+        //renderer.draw_vector(kep2.ascending_node_unit,  8000000, vec3f(1.0f, 1.0f, 0.6f));
 
-        renderer.draw_vector(h_vec, 10000000, vec3f(1.0f, 0.96f, 0.68f));
+        renderer.draw_vector(kep.specific_ang_momentum_unit, 10000000, vec3f(0.8f, 0.76f, 0.68f));
+        //renderer.draw_vector(kep.ascending_node_unit,  8000000, vec3f(1.0f, 1.0f, 0.6f));
+        
+        renderer.draw_plane(vec3f(0.0f, 0.0f, 1.0f), 30000000, vec3f(0.8f, 0.70f, 0.80f), 0.3f);
+        renderer.draw_plane(kep2.specific_ang_momentum_unit, 20000000, vec3f(1.0f, 0.96f, 0.68f), 0.7f);
     }
 
     // Draw UI
     renderer.start_debug_UI();
 
     const ImGuiIO& io = ImGui::GetIO();
+
+    if (draw_ground_tracks) {
+        ImGui::Begin("Ground Tracks");
+        {
+            // Using a Child allow to fill all the space of the window.
+            // It also alows customization
+            ImGui::BeginChild("GameRender");
+            // Get the size of the child (i.e. the whole draw size of the windows).
+            ImVec2 wsize = ImGui::GetWindowSize();
+            // Because I use the texture from OpenGL, I need to invert the V from the UV.
+            uint64 tmp = earth.diffuse.get_handle();
+            ImGui::Image((ImTextureID)tmp, wsize, ImVec2(0, 1), ImVec2(1, 0));
+            //ImGui::Image((ImTextureID)tmp, wsize, ImVec2(0, 1), ImVec2(1, 0));
+            ImGui::EndChild();
+        }
+        ImGui::End();
+    }
 
     if (show_info_panel) {
         ImGui::Begin("App Info", NULL, ImGuiWindowFlags_NoResize);
@@ -342,6 +367,9 @@ void aimpoint::render() {
         case ECEF: {
             ImGui::Text("Earth-Centered");
         } break;
+        case ECLIPTIC: {
+            ImGui::Text("Earth-Ecliptic");
+        } break;
         case LCI:
         case LCF: {
             ImGui::Text("Launch-Centered");
@@ -410,6 +438,9 @@ void aimpoint::key_callback(int key, int scancode, int action, int mods) {
             case LCF: {
                 render_frame_enum = ECEF;
             } break;
+            case ECLIPTIC: {
+                render_frame_enum = ECI;
+            } break;
         }
     }
 
@@ -429,6 +460,10 @@ void aimpoint::key_callback(int key, int scancode, int action, int mods) {
                 render_frame_enum = LCI;
             } break;
         }
+    }
+
+    if (key == GLFW_KEY_G && action == GLFW_RELEASE) {
+        draw_ground_tracks = !draw_ground_tracks;
     }
 
     // toggle orbital param displays

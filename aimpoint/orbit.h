@@ -6,7 +6,7 @@
 struct orbit {
     orbit(const planet& set_body);
 
-    // 6 Keplerian Elements - At Epoch
+    // 6 Keplerian Elements - Define at Epoch and drive the rest
     double eccentricity;
     double semimajor_axis;
     double inclination;
@@ -14,18 +14,24 @@ struct orbit {
     double argument_of_periapsis;
     double mean_anomaly_at_epoch;
 
-    // other parameters
-    double mean_anomaly;
-    double eccentric_anomaly;
-    double true_anomaly;
-    double mean_motion;
-    double period;
-
+    // other constant parameters
     double periapsis_alt;
     double apoapsis_alt;
+    double mean_motion;
+    double period;
+    double specific_ang_momentum;
+    double specific_energy;
+    vec3d specific_ang_momentum_unit;
+    vec3d ascending_node_unit;
+    vec3d apsis_line_unit;
+    mat3d perifocal_to_inertial;
+
+    // time varying anomalies
+    double true_anomaly;
+    double mean_anomaly;
+    double eccentric_anomaly;
 
     void create_from_state_vectors(const vec3d& pos_eci, const vec3d& vel_eci, double T);
-    void calc_params(double t);
     void advance(double dt);
     void get_state_vectors(vec3d* pos_eci = nullptr, vec3d* vel_eci = nullptr);
 
