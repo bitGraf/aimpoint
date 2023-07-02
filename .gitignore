@@ -2,5 +2,4 @@ tmp/
 build/
 .vs/
 .vscode/
-imgui.ini
 bin/

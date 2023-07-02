@@ -13,6 +13,29 @@
 // TMP for KEY_CODES!
 #include <GLFW/glfw3.h>
 
+char* pretty_time(double time, double* value) {
+    double abs_time = laml::abs(time);
+    double sign = laml::sign(time);
+
+    if (abs_time < 2.0*60.0) {
+        *value = abs_time * sign;
+        return "s";
+    }
+
+    if (abs_time < 2.0*60.0*60.0) {
+        *value = abs_time * sign / 60.0;
+        return "min";
+    }
+
+    if (abs_time < 2*60.0*60.0*24.0) {
+        *value = abs_time * sign / (60.0*60.0);
+        return "hours";
+    }
+
+    *value = abs_time * sign / (60.0*60.0*24.0);
+    return "days";
+}
+
 int aimpoint::run() {
     if (init()) {
         // failed on initialization
@@ -363,6 +386,13 @@ void aimpoint::render() {
     //ImGui::Begin("Zoom", NULL, ImGuiWindowFlags_NoTitleBar);
     ImGui::Text("Zoom: %.1f", zoom_level);
     ImGui::Text("LogZoom: %d", log_zoom_level);
+    ImGui::End();
+
+    ImGui::Begin("Clock", NULL, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
+    //ImGui::Begin("Clock", NULL, ImGuiWindowFlags_NoTitleBar);
+    double value = 0.0f;
+    char* unit = pretty_time(sim_time, &value);
+    ImGui::Text("T: %.1f %s", value, unit);
     ImGui::End();
 
 #if 0
