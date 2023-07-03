@@ -5,6 +5,7 @@
 #include "render/mesh.h"
 #include "physics.h"
 #include "body_type/rocket.h"
+#include "body_type/satellite.h"
 
 #include "planet.h"
 #include "orbit.h"
@@ -55,7 +56,7 @@ enum coordinate_frame : int {
 
 struct aimpoint {
 public:
-    aimpoint() : kep(earth), kep2(earth) {}
+    aimpoint() : constant_orbit(earth), J2_perturbations(earth) {}
     int run();
 
     void key_callback(int key, int scancode, int action, int mods);
@@ -94,8 +95,9 @@ private:
     coordinate_frame render_frame_enum = ECI;
 
     planet earth;
-    orbit kep, kep2;
-    rocket body;
+    orbit constant_orbit, J2_perturbations;
+    satellite_body satellite;
+    rocket hmm;
 
     float cam_orbit_distance;
     laml::Vec3 cam_orbit_point;

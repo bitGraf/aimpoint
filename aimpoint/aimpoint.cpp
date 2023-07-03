@@ -122,14 +122,15 @@ int aimpoint::init() {
 
     earth.load_mesh();
 
-    body.launch(&earth);
-    lci2eci = body.LCI2ECI;
-    eci2lci = laml::transpose(lci2eci);
+    satellite.set_orbit_circ(&earth, 28.627023, -80.620856, 480000, 0.0);
+    constant_orbit.create_from_state_vectors(satellite.state.position, satellite.state.velocity, 0.0);
+    constant_orbit.calc_path_mesh();
+    J2_perturbations.create_from_state_vectors(satellite.state.position, satellite.state.velocity, 0.0);
+    J2_perturbations.calc_path_mesh();
 
-    kep.create_from_state_vectors(body.state.position, body.state.velocity, 0.0);
-    kep.calc_path_mesh();
-    kep2.create_from_state_vectors(body.state.position, body.state.velocity, 0.0);
-    kep2.calc_path_mesh();
+    hmm.launch(&earth);
+    lci2eci = hmm.LCI2ECI;
+    eci2lci = laml::transpose(lci2eci);
 
     spdlog::info("Application intitialized");
 
@@ -145,14 +146,14 @@ void aimpoint::step(double dt) {
     //}
 
     earth.update(sim_time, dt);
-    body.integrate_states(sim_time, dt);
-    kep.advance(dt);
+    satellite.integrate_states(sim_time, dt);
+    constant_orbit.advance(dt);
 
     if (sim_frame % frames_per_min == 0) {
         t.add_point(sim_time);
-        M.add_point(kep.mean_anomaly);
-        E.add_point(kep.eccentric_anomaly);
-        v.add_point(kep.true_anomaly);
+        M.add_point(constant_orbit.mean_anomaly);
+        E.add_point(constant_orbit.eccentric_anomaly);
+        v.add_point(constant_orbit.true_anomaly);
     }
     
     sim_time += dt;
@@ -195,7 +196,7 @@ void aimpoint::render() {
                            eci2lci.c_13, eci2lci.c_23, eci2lci.c_33);
             render_coord_frame = laml::mul(lci_to_render, _eci2lci);
 
-            vec3f lci_point = laml::transform::transform_point(eci2lci, earth.fixed_to_inertial(earth.lla_to_fixed(body.launch_lat,body.launch_lon,0.0), 0.0));
+            vec3f lci_point = laml::transform::transform_point(eci2lci, earth.fixed_to_inertial(earth.lla_to_fixed(hmm.launch_lat,hmm.launch_lon,0.0), 0.0));
             cam_orbit_point = laml::transform::transform_point(lci_to_render, lci_point);
             frame_zoom_level = 0.25f;
         } break;
@@ -204,7 +205,7 @@ void aimpoint::render() {
                            eci2lci.c_12, eci2lci.c_22, eci2lci.c_32,
                            eci2lci.c_13, eci2lci.c_23, eci2lci.c_33);
             render_coord_frame = laml::mul(lci_to_render, laml::mul(_eci2lci, earth.mat_inertial_to_fixed));
-            vec3f lci_point = laml::transform::transform_point(eci2lci, earth.fixed_to_inertial(earth.lla_to_fixed(body.launch_lat,body.launch_lon,0.0), 0.0));
+            vec3f lci_point = laml::transform::transform_point(eci2lci, earth.fixed_to_inertial(earth.lla_to_fixed(hmm.launch_lat,hmm.launch_lon,0.0), 0.0));
             cam_orbit_point = laml::transform::transform_point(lci_to_render, lci_point);
             frame_zoom_level = 0.25f;
         } break;
@@ -217,13 +218,13 @@ void aimpoint::render() {
                             laml::cosd(pitch)*laml::cosd(yaw));
 
     renderer.start_2D_render(earth.diffuse);
-    vec3d pos_ecef = earth.inertial_to_fixed(body.state.position);
+    vec3d pos_ecef = earth.inertial_to_fixed(satellite.state.position);
     double lat, lon, alt;
     earth.fixed_to_lla(pos_ecef, &lat, &lon, &alt);
     renderer.draw_dot(lat, lon, vec3f(1.0f, 0.0f, 0.0f), 1.0f);
 
     vec3d pos_kep, vel_kep;
-    kep.get_state_vectors(&pos_kep, &vel_kep);
+    constant_orbit.get_state_vectors(&pos_kep, &vel_kep);
     pos_ecef = earth.inertial_to_fixed(pos_kep);
     earth.fixed_to_lla(pos_ecef, &lat, &lon, &alt);
     renderer.draw_dot(lat, lon, vec3f(1.0f, 1.0f, 0.0f), 1.0f);
@@ -247,31 +248,31 @@ void aimpoint::render() {
     
     // dot at launch site
     renderer.bind_texture(red_tex);
-    vec3f launch_site = earth.fixed_to_inertial(earth.lla_to_fixed(body.launch_lat,body.launch_lon,0.0));
+    vec3f launch_site = earth.fixed_to_inertial(earth.lla_to_fixed(hmm.launch_lat,hmm.launch_lon,0.0));
     renderer.draw_mesh(dot, launch_site, laml::Quat());
     
     // Orbit from RK4 integrator
     renderer.bind_texture(grid_tex);
-    renderer.draw_mesh(dot, body.state.position, body.state.orientation);
-    renderer.draw_path(kep.path_handle,  100, vec3f(.3333f, 0.4588f, .5418f));
+    renderer.draw_mesh(dot, satellite.state.position, satellite.state.orientation);
+    renderer.draw_path(constant_orbit.path_handle,  100, vec3f(.3333f, 0.4588f, .5418f));
     
     // Orbit from orbit integrator
     renderer.bind_texture(red_tex);
-    renderer.draw_mesh(dot, pos_kep, body.state.orientation);
-    kep2.create_from_state_vectors(body.state.position, body.state.velocity, sim_time);
-    kep2.calc_path_mesh();
-    renderer.draw_path(kep2.path_handle, 100, vec3f(.3333f, 0.4588f, .5418f));
+    renderer.draw_mesh(dot, pos_kep, satellite.state.orientation);
+    J2_perturbations.create_from_state_vectors(satellite.state.position, satellite.state.velocity, sim_time);
+    J2_perturbations.calc_path_mesh();
+    renderer.draw_path(J2_perturbations.path_handle, 100, vec3f(.3333f, 0.4588f, .5418f));
     
     // draw orbit/equatorial planes
     if (draw_planes) {
-        renderer.draw_vector(kep2.specific_ang_momentum_unit,  8000000, vec3f(1.0f, 0.96f, 0.68f));
+        renderer.draw_vector(J2_perturbations.specific_ang_momentum_unit,  8000000, vec3f(1.0f, 0.96f, 0.68f));
         //renderer.draw_vector(kep2.ascending_node_unit,  8000000, vec3f(1.0f, 1.0f, 0.6f));
     
-        renderer.draw_vector(kep.specific_ang_momentum_unit, 10000000, vec3f(0.8f, 0.76f, 0.68f));
+        renderer.draw_vector(constant_orbit.specific_ang_momentum_unit, 10000000, vec3f(0.8f, 0.76f, 0.68f));
         //renderer.draw_vector(kep.ascending_node_unit,  8000000, vec3f(1.0f, 1.0f, 0.6f));
         
         renderer.draw_plane(vec3f(0.0f, 0.0f, 1.0f), 30000000, vec3f(0.8f, 0.70f, 0.80f), 0.3f);
-        renderer.draw_plane(kep2.specific_ang_momentum_unit, 20000000, vec3f(1.0f, 0.96f, 0.68f), 0.7f);
+        renderer.draw_plane(J2_perturbations.specific_ang_momentum_unit, 20000000, vec3f(1.0f, 0.96f, 0.68f), 0.7f);
     }
 
     // Draw UI
@@ -324,23 +325,23 @@ void aimpoint::render() {
         ImGui::Begin("Keplerian Elements", NULL, ImGuiWindowFlags_NoResize);
 
         ImGui::Text("Keplerian Orbit Propagation");
-        ImGui::Text("Eccentricity: %.5f", kep.eccentricity);
-        ImGui::Text("Semimajor Axis: %.1f km", kep.semimajor_axis/1000.0);
-        ImGui::Text("Inclination: %.2f deg", kep.inclination);
-        ImGui::Text("RAAN: %.2f deg", kep.right_ascension);
-        ImGui::Text("Arg. of Periapsis: %.2f deg", kep.argument_of_periapsis);
-        ImGui::Text("Mean Anomaly (Epoch): %.2f deg", kep.mean_anomaly_at_epoch);
-        ImGui::Text("Period: %.3f min", kep.period / 60.0);
+        ImGui::Text("Eccentricity: %.5f", constant_orbit.eccentricity);
+        ImGui::Text("Semimajor Axis: %.1f km", constant_orbit.semimajor_axis/1000.0);
+        ImGui::Text("Inclination: %.2f deg", constant_orbit.inclination);
+        ImGui::Text("RAAN: %.2f deg", constant_orbit.right_ascension);
+        ImGui::Text("Arg. of Periapsis: %.2f deg", constant_orbit.argument_of_periapsis);
+        ImGui::Text("Mean Anomaly (Epoch): %.2f deg", constant_orbit.mean_anomaly_at_epoch);
+        ImGui::Text("Period: %.3f min", constant_orbit.period / 60.0);
         ImGui::Separator();
 
         ImGui::Text("Num. Integration with J2 Perturbation");
-        ImGui::Text("Eccentricity: %.5f", kep2.eccentricity);
-        ImGui::Text("Semimajor Axis: %.1f km", kep2.semimajor_axis/1000.0);
-        ImGui::Text("Inclination: %.2f deg", kep2.inclination);
-        ImGui::Text("RAAN: %.2f deg", kep2.right_ascension);
-        ImGui::Text("Arg. of Periapsis: %.2f deg", kep2.argument_of_periapsis);
-        ImGui::Text("Mean Anomaly (Epoch): %.2f deg", kep2.mean_anomaly_at_epoch);
-        ImGui::Text("Period: %.3f min", kep2.period / 60.0);
+        ImGui::Text("Eccentricity: %.5f", J2_perturbations.eccentricity);
+        ImGui::Text("Semimajor Axis: %.1f km", J2_perturbations.semimajor_axis/1000.0);
+        ImGui::Text("Inclination: %.2f deg", J2_perturbations.inclination);
+        ImGui::Text("RAAN: %.2f deg", J2_perturbations.right_ascension);
+        ImGui::Text("Arg. of Periapsis: %.2f deg", J2_perturbations.argument_of_periapsis);
+        ImGui::Text("Mean Anomaly (Epoch): %.2f deg", J2_perturbations.mean_anomaly_at_epoch);
+        ImGui::Text("Period: %.3f min", J2_perturbations.period / 60.0);
         ImGui::Separator();
 
         ImGui::End();
@@ -348,9 +349,9 @@ void aimpoint::render() {
         if (show_anomoly_panel) {
             ImGui::Begin("Anomalies", NULL, ImGuiWindowFlags_NoResize);
 
-            ImGui::Text("Mean Anomaly: %.5f deg", kep.mean_anomaly);
-            ImGui::Text("Ecc  Anomaly: %.5f deg", kep.eccentric_anomaly);
-            ImGui::Text("True Anomaly: %.5f deg", kep.true_anomaly);
+            ImGui::Text("Mean Anomaly: %.5f deg", constant_orbit.mean_anomaly);
+            ImGui::Text("Ecc  Anomaly: %.5f deg", constant_orbit.eccentric_anomaly);
+            ImGui::Text("True Anomaly: %.5f deg", constant_orbit.true_anomaly);
             ImGui::Separator();
 
             double history = t.length;

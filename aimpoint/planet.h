@@ -24,6 +24,7 @@ struct planet {
     void  inertial_to_fixed(vec3d pos_inertial, vec3d vel_inertial, double t, vec3d* pos_fixed, vec3d* vel_fixed);
 
     vec3d gravity(vec3d pos_inertial);
+    vec3d gravity_J2(vec3d pos_inertial);
 
     mat3d create_local_inertial(double lat, double lon, double alt);
 
@@ -37,6 +38,7 @@ struct planet {
     double eccentricity_sq = 6.69437999014e-3; // 
     double yaw = 0.0;                          // rad
     double gm = 3.986004418e14;                // m^3/s^2
+    double J2 = 1.75553e25;                    // 
 
     laml::Mat3 mat_inertial_to_fixed;
     laml::Mat3 mat_fixed_to_inertial;

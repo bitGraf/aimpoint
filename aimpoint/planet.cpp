@@ -173,7 +173,13 @@ vec3d planet::gravity(vec3d pos_inertial) {
     double r_mag = laml::length(pos_inertial);
     vec3d r_unit = pos_inertial / r_mag;
 
-    const double J2 = 1.75553e10 * (1.0e15);
+    return -gm * r_unit / (r_mag*r_mag);
+}
+
+vec3d planet::gravity_J2(vec3d pos_inertial) {
+    double r_mag = laml::length(pos_inertial);
+    vec3d r_unit = pos_inertial / r_mag;
+
     const double x = pos_inertial.x;
     const double y = pos_inertial.y;
     const double z = pos_inertial.z;
