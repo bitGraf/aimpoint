@@ -216,45 +216,57 @@ void aimpoint::render() {
                            -laml::sind(pitch), 
                             laml::cosd(pitch)*laml::cosd(yaw));
 
-    renderer.start_frame(cam_pos, yaw, pitch, render_coord_frame);
+    renderer.start_2D_render(earth.diffuse);
+    vec3d pos_ecef = earth.inertial_to_fixed(body.state.position);
+    double lat, lon, alt;
+    earth.fixed_to_lla(pos_ecef, &lat, &lon, &alt);
+    renderer.draw_dot(lat, lon, vec3f(1.0f, 0.0f, 0.0f), 1.0f);
 
+    vec3d pos_kep, vel_kep;
+    kep.get_state_vectors(&pos_kep, &vel_kep);
+    pos_ecef = earth.inertial_to_fixed(pos_kep);
+    earth.fixed_to_lla(pos_ecef, &lat, &lon, &alt);
+    renderer.draw_dot(lat, lon, vec3f(1.0f, 1.0f, 0.0f), 1.0f);
+
+    renderer.end_2D_render();
+
+    renderer.start_frame(cam_pos, yaw, pitch, render_coord_frame);
+    
     renderer.bind_texture(earth.diffuse);
     renderer.draw_mesh(earth.mesh, laml::Vec3(0.0f), laml::transform::quat_from_mat(earth.mat_fixed_to_inertial));
-
+    
     // draw ECI frame
     renderer.draw_vector(vec3f(1.0f, 0.0f, 0.0f), 10000000, vec3f(1.0f, 0.1f, 0.1f));
     renderer.draw_vector(vec3f(0.0f, 1.0f, 0.0f), 10000000, vec3f(0.1f, 1.0f, 0.1f));
     renderer.draw_vector(vec3f(0.0f, 0.0f, 1.0f), 10000000, vec3f(0.1f, 0.1f, 1.0f));
-
+    
     // draw ECEF frame
     renderer.draw_vector(laml::transform::transform_point(earth.mat_fixed_to_inertial, vec3f(1.0f, 0.0f, 0.0f)), 8000000, vec3f(1.0f, 0.3f, 0.3f));
     renderer.draw_vector(laml::transform::transform_point(earth.mat_fixed_to_inertial, vec3f(0.0f, 1.0f, 0.0f)), 8000000, vec3f(0.3f, 1.0f, 0.3f));
     //renderer.draw_vector(laml::transform::transform_point(earth.mat_fixed_to_inertial, vec3f(0.0f, 0.0f, 1.0f)), 8000000, vec3f(0.3f, 0.3f, 1.0f));
-
+    
     // dot at launch site
     renderer.bind_texture(red_tex);
     vec3f launch_site = earth.fixed_to_inertial(earth.lla_to_fixed(body.launch_lat,body.launch_lon,0.0));
     renderer.draw_mesh(dot, launch_site, laml::Quat());
-
+    
     // Orbit from RK4 integrator
     renderer.bind_texture(grid_tex);
     renderer.draw_mesh(dot, body.state.position, body.state.orientation);
     renderer.draw_path(kep.path_handle,  100, vec3f(.3333f, 0.4588f, .5418f));
-
+    
     // Orbit from orbit integrator
-    vec3d pos_kep, vel_kep;
-    kep.get_state_vectors(&pos_kep, &vel_kep);
     renderer.bind_texture(red_tex);
     renderer.draw_mesh(dot, pos_kep, body.state.orientation);
     kep2.create_from_state_vectors(body.state.position, body.state.velocity, sim_time);
     kep2.calc_path_mesh();
     renderer.draw_path(kep2.path_handle, 100, vec3f(.3333f, 0.4588f, .5418f));
-
+    
     // draw orbit/equatorial planes
     if (draw_planes) {
         renderer.draw_vector(kep2.specific_ang_momentum_unit,  8000000, vec3f(1.0f, 0.96f, 0.68f));
         //renderer.draw_vector(kep2.ascending_node_unit,  8000000, vec3f(1.0f, 1.0f, 0.6f));
-
+    
         renderer.draw_vector(kep.specific_ang_momentum_unit, 10000000, vec3f(0.8f, 0.76f, 0.68f));
         //renderer.draw_vector(kep.ascending_node_unit,  8000000, vec3f(1.0f, 1.0f, 0.6f));
         
@@ -276,7 +288,7 @@ void aimpoint::render() {
             // Get the size of the child (i.e. the whole draw size of the windows).
             ImVec2 wsize = ImGui::GetWindowSize();
             // Because I use the texture from OpenGL, I need to invert the V from the UV.
-            uint64 tmp = earth.diffuse.get_handle();
+            uint64 tmp = renderer.get_2D_output();
             ImGui::Image((ImTextureID)tmp, wsize, ImVec2(0, 1), ImVec2(1, 0));
             //ImGui::Image((ImTextureID)tmp, wsize, ImVec2(0, 1), ImVec2(1, 0));
             ImGui::EndChild();

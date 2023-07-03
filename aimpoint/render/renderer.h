@@ -21,9 +21,10 @@ struct opengl_renderer {
     bool should_window_close();
     double get_time();
 
-    //void start_2D_render();
-    //uint32 get_texture() const { return handle_2D_render_output; }
-    //void end_2D_render();
+    void start_2D_render(const texture& bg);
+    void draw_dot(float lat, float lon, const vec3f& color = vec3f(1.0f, 1.0f, 1.0f), float alpha = 1.0f);
+    void end_2D_render();
+    uint32 get_2D_output() const { return handle_2D_render_output; }
 
     void start_frame(const laml::Vec3& cam_pos, float cam_yaw, float cam_pitch,
                      const laml::Mat3& render_frame = laml::Mat3());
@@ -51,10 +52,15 @@ private:
     shader_program basic_shader;
     shader_program line_shader;
 
+    uint32 box_2D_handle;
     uint32 handle_2D_render_output;
+    uint32 handle_2D_framebuffer;
 
     uint32 plane_handle;
     triangle_mesh vector_mesh;
+    uint32 dot_handle;
+    uint32 num_dot_inds;
+    texture blank_tex;
 
     mat3f render_frame;
 

@@ -9,6 +9,7 @@ struct shader_program {
 
     void set_uniform(const char* name, uint32 value);
     void set_uniform(const char* name, float value);
+    void set_uniform(const char* name, const laml::Vec2& value);
     void set_uniform(const char* name, const vec3f& value);
     void set_uniform(const char* name, const mat4f& value);
 

@@ -90,6 +90,10 @@ void shader_program::set_uniform(const char* name, float value){
     int location = glGetUniformLocation(handle, name);
     glUniform1f(location, value);
 }
+void shader_program::set_uniform(const char* name, const laml::Vec2& value){
+    int location = glGetUniformLocation(handle, name);
+    glUniform2fv(location, 1, value._data);
+}
 void shader_program::set_uniform(const char* name, const vec3f& value){
     int location = glGetUniformLocation(handle, name);
     glUniform3fv(location, 1, value._data);

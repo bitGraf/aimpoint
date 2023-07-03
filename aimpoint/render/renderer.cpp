@@ -137,35 +137,43 @@ int32 opengl_renderer::init_gl_glfw(aimpoint* app_ptr, int32 width, int32 height
 
     // create 2D shader
     const char *twoDVertexShaderSource = "#version 430 core\n"
-                                         "layout (location = 0) in vec3 a_Position;\n"
-                                         "layout (location = 1) uniform mat4 r_View;\n"
-                                         "layout (location = 2) uniform mat4 r_Projection;\n"
-                                         "layout (location = 3) uniform mat4 r_Transform;\n"
+                                         "layout (location = 0) in vec2 a_Position;\n"
+                                         "layout (location = 1) in vec2 a_TexCoord;\n"
+                                         "out vec2 out_texcoord;\n"
+                                         "layout (location = 1) uniform mat4 r_Projection;\n"
+                                         "layout (location = 2) uniform vec2 r_position;\n"
                                          "void main() {\n"
-                                         "    gl_Position = r_Projection * r_View * r_Transform * vec4(a_Position, 1.0);\n"
+                                         "    gl_Position = r_Projection * vec4(a_Position.x+r_position.x, a_Position.y+r_position.y, 0.0, 1.0);\n"
+                                         "    out_texcoord = a_TexCoord;\n"
                                          "}\n";
 
     const char *twoDFragmentShaderSource = "#version 430 core\n"
                                            "out vec4 FragColor;\n"
-                                           "layout (location = 4) uniform vec3 r_color;\n"
-                                           "layout (location = 5) uniform float r_alpha;\n"
+                                           "in vec2 out_texcoord;\n"
+                                           "layout (location = 3) uniform vec3 r_color;\n"
+                                           "layout (location = 4) uniform float r_alpha;\n"
+                                           "uniform sampler2D diffuse_tex;\n"
                                            "void main()\n"
                                            "{\n"
-                                           "   //vec3 color = vec3(.3333f, 0.4588f, .5418f);\n"
-                                           "   FragColor = vec4(r_color, r_alpha);\n"
+                                           "   vec4 tex_raw = texture(diffuse_tex, out_texcoord);\n"
+                                           "   vec3 tex_color = tex_raw.rgb;\n"
+                                           "   float tex_alpha = tex_raw.a;\n"
+                                           "   FragColor = vec4(r_color*tex_color, tex_alpha*r_alpha);\n"
                                            "}\0";
 
     if (!basic_2D_shader.create_shader_from_source(twoDVertexShaderSource, twoDFragmentShaderSource)) {
         return 3;
     }
+    basic_2D_shader.set_uniform("diffuse_tex", uint32(0));
 
     // OpenGL settings
     glLineWidth(4.0f);
     glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);  
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     // load primitives
     vector_mesh.load_from_mesh_file("../data/vector.mesh", 1.0f, 0.7f, 0.7f);
+    blank_tex.load_texture_file("../data/circle.png");
 
     // create simple plane mesh
     {
@@ -198,6 +206,98 @@ int32 opengl_renderer::init_gl_glfw(aimpoint* app_ptr, int32 width, int32 height
 
         glBindBuffer(GL_ARRAY_BUFFER, 0);
         glBindVertexArray(0);
+    }
+
+    // create 2D assets
+    {
+        float verts[] = {
+                            -180.0f, -90.0f, 0.0f,   0.0f, 0.0f,
+                             180.0f, -90.0f, 0.0f,   1.0f, 0.0f,
+                             180.0f,  90.0f, 0.0f,   1.0f, 1.0f,
+                            -180.0f,  90.0f, 0.0f,   0.0f, 1.0f,
+        };
+        uint32 inds[] = {
+                        0, 1, 2,
+                        0, 2, 3
+        };
+        // load points into GPU
+        unsigned int VBO, EBO;
+        glGenVertexArrays(1, &box_2D_handle);
+        glGenBuffers(1, &VBO);
+        glGenBuffers(1, &EBO);
+
+        glBindVertexArray(box_2D_handle);
+
+        glBindBuffer(GL_ARRAY_BUFFER, VBO);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(float)*20, verts, GL_DYNAMIC_DRAW);
+
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(uint32)*6, inds, GL_DYNAMIC_DRAW);
+
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+        glEnableVertexAttribArray(0);
+        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3*sizeof(float)));
+        glEnableVertexAttribArray(1);
+
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+        glBindVertexArray(0);
+    }
+    {
+        float verts[] = {
+                        -2.5f, -2.5f, 0.0f,   0.0f, 0.0f,
+                         2.5f, -2.5f, 0.0f,   1.0f, 0.0f,
+                         2.5f,  2.5f, 0.0f,   1.0f, 1.0f,
+                        -2.5f,  2.5f, 0.0f,   0.0f, 1.0f,
+        };
+        uint32 inds[] = {
+                        0, 1, 2,
+                        0, 2, 3
+        };
+        num_dot_inds = 6;
+        // load points into GPU
+        unsigned int VBO, EBO;
+        glGenVertexArrays(1, &dot_handle);
+        glGenBuffers(1, &VBO);
+        glGenBuffers(1, &EBO);
+
+        glBindVertexArray(dot_handle);
+
+        glBindBuffer(GL_ARRAY_BUFFER, VBO);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(float)*5*4, verts, GL_DYNAMIC_DRAW);
+
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(uint32)*num_dot_inds, inds, GL_DYNAMIC_DRAW);
+
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+        glEnableVertexAttribArray(0);
+        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3*sizeof(float)));
+        glEnableVertexAttribArray(1);
+
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+        glBindVertexArray(0);
+    }
+
+    // setup framebuffer / render texture
+    {
+        glGenFramebuffers(1, &handle_2D_framebuffer);
+        glBindFramebuffer(GL_FRAMEBUFFER, handle_2D_framebuffer);
+        // create a color attachment texture
+        glGenTextures(1, &handle_2D_render_output);
+        glBindTexture(GL_TEXTURE_2D, handle_2D_render_output);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, window_width, window_height, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, handle_2D_render_output, 0);
+        // create a renderbuffer object for depth and stencil attachment (we won't be sampling these)
+        unsigned int rbo;
+        glGenRenderbuffers(1, &rbo);
+        glBindRenderbuffer(GL_RENDERBUFFER, rbo);
+        glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, window_width, window_height); // use a single renderbuffer object for both a depth AND stencil buffer.
+        glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, rbo); // now actually attach it
+        // now that we actually created the framebuffer and added all attachments we want to check if it is actually complete now
+        if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+            return 4;
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
     }
 
     // Setup Dear ImGui context
@@ -419,6 +519,50 @@ void opengl_renderer::draw_vector(vec3f vector, float scale, vec3f color, float 
 
     glBindVertexArray(vector_mesh.handles[0]);
     glDrawElements(GL_TRIANGLES, vector_mesh.num_inds[0], GL_UNSIGNED_INT, 0);
+}
+
+// 2D pass
+void opengl_renderer::start_2D_render(const texture& bg) {
+    glBindFramebuffer(GL_FRAMEBUFFER, handle_2D_framebuffer);
+
+    glDisable(GL_DEPTH_TEST);
+
+    //glClearColor(0.2f, 0.4f, 0.1f, 1.0f);
+    glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    basic_2D_shader.bind();
+
+    laml::Mat4 projection_matrix;
+    laml::transform::create_projection_orthographic(projection_matrix, -180.0f, 180.0f, -90.0f, 90.0f, -1.0f, 1.0f);
+    basic_2D_shader.set_uniform("r_Projection", projection_matrix);
+
+    basic_2D_shader.set_uniform("r_color", vec3f(1.0f, 1.0f, 1.0f));
+    basic_2D_shader.set_uniform("r_alpha", 1.0f);
+    basic_2D_shader.set_uniform("r_position", laml::Vec2(0.0f, 0.0f));
+
+    bind_texture(bg);
+
+    glBindVertexArray(box_2D_handle);
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+}
+
+void opengl_renderer::draw_dot(float lat, float lon, const vec3f& color, float alpha) {
+    basic_2D_shader.bind();
+
+    basic_2D_shader.set_uniform("r_color", color);
+    basic_2D_shader.set_uniform("r_alpha", alpha);
+    basic_2D_shader.set_uniform("r_position", laml::Vec2(lon, lat));
+
+    bind_texture(blank_tex);
+
+    glBindVertexArray(dot_handle);
+    glDrawElements(GL_TRIANGLES, num_dot_inds, GL_UNSIGNED_INT, 0);
+}
+void opengl_renderer::end_2D_render() {
+    glEnable(GL_DEPTH_TEST);
+
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
 void opengl_renderer::start_debug_UI() {    
