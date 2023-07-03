@@ -93,22 +93,6 @@ int32 opengl_renderer::init_gl_glfw(aimpoint* app_ptr, int32 width, int32 height
                                      "    out_texcoord = a_TexCoord;\n"
                                      "}\n";
 
-    unsigned int vertexShader;
-    vertexShader = glCreateShader(GL_VERTEX_SHADER);
-
-    glShaderSource(vertexShader, 1, &vertexShaderSource, NULL);
-    glCompileShader(vertexShader);
-
-    int success;
-    char infoLog[512];
-    glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
-
-    if (!success) {
-        glGetShaderInfoLog(vertexShader, 512, NULL, infoLog);
-        spdlog::critical("ERROR::SHADER::VERTEX::COMPILATION_FAILED\n{0}", infoLog);
-        return 3;
-    }
-
     const char *fragmentShaderSource = "#version 430 core\n"
                                        "out vec4 FragColor;\n"
                                        "in vec3 out_normal;\n"
@@ -123,41 +107,11 @@ int32 opengl_renderer::init_gl_glfw(aimpoint* app_ptr, int32 width, int32 height
                                        "   FragColor = vec4(ambient + dot(light_dir, out_normal) * tex_color, 1.0f);\n"
                                        "   FragColor = vec4(tex_color, 1.0f);\n"
                                        "}\0";
-
-    unsigned int fragmentShader;
-    fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fragmentShader, 1, &fragmentShaderSource, NULL);
-    glCompileShader(fragmentShader);
-
-    glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
-
-    if (!success) {
-        glGetShaderInfoLog(fragmentShader, 512, NULL, infoLog);
-        spdlog::critical("ERROR::SHADER::FRAGMENT::COMPILATION_FAILED\n{0}", infoLog);
+    if (!basic_shader.create_shader_from_source(vertexShaderSource, fragmentShaderSource)) {
         return 3;
     }
 
-    unsigned int shaderProgram;
-    shaderProgram = glCreateProgram();
-
-    glAttachShader(shaderProgram, vertexShader);
-    glAttachShader(shaderProgram, fragmentShader);
-    glLinkProgram(shaderProgram);
-
-    glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
-    if (!success) {
-        glGetProgramInfoLog(shaderProgram, 512, NULL, infoLog);
-        spdlog::critical("ERROR::SHADER::LINKING_FAILED\n{0}", infoLog);
-        return 3;
-    }
-
-    basic_shader = shaderProgram;
-    glUseProgram(shaderProgram);
-
-    glDeleteShader(vertexShader);
-    glDeleteShader(fragmentShader);
-
-    // create basic shader
+    // create Line shader
     const char *lineVertexShaderSource = "#version 430 core\n"
                                          "layout (location = 0) in vec3 a_Position;\n"
                                          "layout (location = 1) uniform mat4 r_View;\n"
@@ -166,19 +120,6 @@ int32 opengl_renderer::init_gl_glfw(aimpoint* app_ptr, int32 width, int32 height
                                          "void main() {\n"
                                          "    gl_Position = r_Projection * r_View * r_Transform * vec4(a_Position, 1.0);\n"
                                          "}\n";
-
-    vertexShader = glCreateShader(GL_VERTEX_SHADER);
-
-    glShaderSource(vertexShader, 1, &lineVertexShaderSource, NULL);
-    glCompileShader(vertexShader);
-
-    glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
-
-    if(!success) {
-        glGetShaderInfoLog(vertexShader, 512, NULL, infoLog);
-        spdlog::critical("ERROR::SHADER::VERTEX::COMPILATION_FAILED\n{0}", infoLog);
-        return 3;
-    }
 
     const char *lineFragmentShaderSource = "#version 430 core\n"
                                            "out vec4 FragColor;\n"
@@ -190,36 +131,33 @@ int32 opengl_renderer::init_gl_glfw(aimpoint* app_ptr, int32 width, int32 height
                                            "   FragColor = vec4(r_color, r_alpha);\n"
                                            "}\0";
 
-    fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fragmentShader, 1, &lineFragmentShaderSource, NULL);
-    glCompileShader(fragmentShader);
-
-    glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
-
-    if(!success) {
-        glGetShaderInfoLog(fragmentShader, 512, NULL, infoLog);
-        spdlog::critical("ERROR::SHADER::FRAGMENT::COMPILATION_FAILED\n{0}", infoLog);
+    if (!line_shader.create_shader_from_source(lineVertexShaderSource, lineFragmentShaderSource)) {
         return 3;
     }
 
-    shaderProgram = glCreateProgram();
+    // create 2D shader
+    const char *twoDVertexShaderSource = "#version 430 core\n"
+                                         "layout (location = 0) in vec3 a_Position;\n"
+                                         "layout (location = 1) uniform mat4 r_View;\n"
+                                         "layout (location = 2) uniform mat4 r_Projection;\n"
+                                         "layout (location = 3) uniform mat4 r_Transform;\n"
+                                         "void main() {\n"
+                                         "    gl_Position = r_Projection * r_View * r_Transform * vec4(a_Position, 1.0);\n"
+                                         "}\n";
 
-    glAttachShader(shaderProgram, vertexShader);
-    glAttachShader(shaderProgram, fragmentShader);
-    glLinkProgram(shaderProgram);
+    const char *twoDFragmentShaderSource = "#version 430 core\n"
+                                           "out vec4 FragColor;\n"
+                                           "layout (location = 4) uniform vec3 r_color;\n"
+                                           "layout (location = 5) uniform float r_alpha;\n"
+                                           "void main()\n"
+                                           "{\n"
+                                           "   //vec3 color = vec3(.3333f, 0.4588f, .5418f);\n"
+                                           "   FragColor = vec4(r_color, r_alpha);\n"
+                                           "}\0";
 
-    glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
-    if(!success) {
-        glGetProgramInfoLog(shaderProgram, 512, NULL, infoLog);
-        spdlog::critical("ERROR::SHADER::LINKING_FAILED\n{0}", infoLog);
+    if (!basic_2D_shader.create_shader_from_source(twoDVertexShaderSource, twoDFragmentShaderSource)) {
         return 3;
     }
-
-    line_shader = shaderProgram;
-    glUseProgram(shaderProgram);
-
-    glDeleteShader(vertexShader);
-    glDeleteShader(fragmentShader);
 
     // OpenGL settings
     glLineWidth(4.0f);
@@ -350,48 +288,43 @@ void opengl_renderer::start_frame(const laml::Vec3& cam_pos, float cam_yaw, floa
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     {
-        glUseProgram(line_shader);
+        line_shader.bind();
 
         laml::Mat4 cam_transform, view_matrix;
         laml::transform::create_transform(cam_transform, cam_yaw, cam_pitch, 0.0f, cam_pos);
         laml::transform::create_view_matrix_from_transform(view_matrix, cam_transform);
-        int viewLocation = glGetUniformLocation(line_shader, "r_View");
-        glUniformMatrix4fv(viewLocation, 1, GL_FALSE, view_matrix._data);
+        line_shader.set_uniform("r_View", view_matrix);
 
         laml::Mat4 projection_matrix;
         float AR = ((float)window_width / (float)window_height);
         laml::transform::create_projection_perspective(projection_matrix, 75.0f, AR, 1000.0f, 50'000'000.0f);
         //laml::transform::create_projection_orthographic(projection_matrix, -10.0f, 10.0f, -10.0f, 10.0f, -10.0f, 10.0f);
-        int projLocation = glGetUniformLocation(line_shader, "r_Projection");
-        glUniformMatrix4fv(projLocation, 1, GL_FALSE, projection_matrix._data);
+        line_shader.set_uniform("r_Projection", projection_matrix);
 
         //laml::Mat4 transform_matrix(1.0f);
         //int transformLocation = glGetUniformLocation(line_shader, "r_Transform");
         //glUniformMatrix4fv(transformLocation, 1, GL_FALSE, transform_matrix._data);
 
         vec3f color(1.0f, 1.0f, 1.0f);
+        line_shader.set_uniform("r_color", color);
+
         float alpha = 1.0f;
-        int colorLocation = glGetUniformLocation(line_shader, "r_color");
-        glUniform3fv(colorLocation, 1, color._data);
-        int alphaLocation = glGetUniformLocation(line_shader, "r_alpha");
-        glUniform1f(alphaLocation, alpha);
+        line_shader.set_uniform("r_alpha", alpha);
     }
 
     {
-        glUseProgram(basic_shader);
+        basic_shader.bind();
 
         laml::Mat4 cam_transform, view_matrix;
         laml::transform::create_transform(cam_transform, cam_yaw, cam_pitch, 0.0f, cam_pos);
         laml::transform::create_view_matrix_from_transform(view_matrix, cam_transform);
-        int viewLocation = glGetUniformLocation(basic_shader, "r_View");
-        glUniformMatrix4fv(viewLocation, 1, GL_FALSE, view_matrix._data);
+        line_shader.set_uniform("r_View", view_matrix);
 
         laml::Mat4 projection_matrix;
         float AR = ((float)window_width / (float)window_height);
         laml::transform::create_projection_perspective(projection_matrix, 75.0f, AR, 1000.0f, 50'000'000.0f);
         //laml::transform::create_projection_orthographic(projection_matrix, -10.0f, 10.0f, -10.0f, 10.0f, -10.0f, 10.0f);
-        int projLocation = glGetUniformLocation(basic_shader, "r_Projection");
-        glUniformMatrix4fv(projLocation, 1, GL_FALSE, projection_matrix._data);
+        line_shader.set_uniform("r_Projection", projection_matrix);
     }
 }
 
@@ -403,7 +336,7 @@ void opengl_renderer::bind_texture(const texture& tex) {
 void opengl_renderer::draw_mesh(const triangle_mesh& mesh, 
                                 const laml::Vec3& position, 
                                 const laml::Quat& orientation) {
-    glUseProgram(basic_shader);
+    basic_shader.bind();
 
     laml::Mat4 transform_matrix;
     //laml::transform::create_transform_translate(transform_matrix, position);
@@ -411,8 +344,7 @@ void opengl_renderer::draw_mesh(const triangle_mesh& mesh,
     laml::Quat r = laml::transform::quat_from_mat(render_frame);
 
     laml::transform::create_transform(transform_matrix, laml::mul(r, orientation), laml::transform::transform_point(render_frame, position));
-    int transformLocation = glGetUniformLocation(basic_shader, "r_Transform");
-    glUniformMatrix4fv(transformLocation, 1, GL_FALSE, transform_matrix._data);
+    basic_shader.set_uniform("r_Transform", transform_matrix);
 
     for (int n = 0; n < mesh.num_prims; n++) {
         glBindVertexArray(mesh.handles[n]);
@@ -421,26 +353,23 @@ void opengl_renderer::draw_mesh(const triangle_mesh& mesh,
 }
 
 void opengl_renderer::draw_path(uint32 handle, uint32 N, vec3f color, float alpha) {
-    glUseProgram(line_shader);
+    line_shader.bind();
 
     laml::Mat4 transform_matrix;
     laml::Quat r = laml::transform::quat_from_mat(render_frame);
 
     laml::transform::create_transform_rotation(transform_matrix, r);
-    int transformLocation = glGetUniformLocation(line_shader, "r_Transform");
-    glUniformMatrix4fv(transformLocation, 1, GL_FALSE, transform_matrix._data);
+    line_shader.set_uniform("r_Transform", transform_matrix);
 
-    int colorLocation = glGetUniformLocation(line_shader, "r_color");
-    glUniform3fv(colorLocation, 1, color._data);
-    int alphaLocation = glGetUniformLocation(line_shader, "r_alpha");
-    glUniform1f(alphaLocation, alpha);
+    line_shader.set_uniform("r_color", color);
+    line_shader.set_uniform("r_alpha", alpha);
 
     glBindVertexArray(handle);
     glDrawElements(GL_LINE_LOOP, N, GL_UNSIGNED_INT, 0);
 }
 
 void opengl_renderer::draw_plane(vec3f normal, float scale, vec3f color, float alpha) {
-    glUseProgram(line_shader);
+    line_shader.bind();
 
     vec3f Z_vec(0.0f, 0.0f, 1.0f);
 
@@ -457,20 +386,16 @@ void opengl_renderer::draw_plane(vec3f normal, float scale, vec3f color, float a
     mat3f rot(normal, tangent, bitangent);
     laml::Mat4 transform_matrix(laml::mul(render_frame, rot*scale));
 
-    int transformLocation = glGetUniformLocation(line_shader, "r_Transform");
-    glUniformMatrix4fv(transformLocation, 1, GL_FALSE, transform_matrix._data);
-
-    int colorLocation = glGetUniformLocation(line_shader, "r_color");
-    glUniform3fv(colorLocation, 1, color._data);
-    int alphaLocation = glGetUniformLocation(line_shader, "r_alpha");
-    glUniform1f(alphaLocation, alpha);
+    line_shader.set_uniform("r_Transform", transform_matrix);
+    line_shader.set_uniform("r_color", color);
+    line_shader.set_uniform("r_alpha", alpha);
 
     glBindVertexArray(plane_handle);
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 }
 
 void opengl_renderer::draw_vector(vec3f vector, float scale, vec3f color, float alpha) {
-    glUseProgram(line_shader);
+    line_shader.bind();
 
     vec3f Z_vec(0.0f, 0.0f, 1.0f);
 
@@ -487,13 +412,10 @@ void opengl_renderer::draw_vector(vec3f vector, float scale, vec3f color, float 
     mat3f rot(vector, tangent, bitangent);
     laml::Mat4 transform_matrix(laml::mul(render_frame, rot*scale));
 
-    int transformLocation = glGetUniformLocation(line_shader, "r_Transform");
-    glUniformMatrix4fv(transformLocation, 1, GL_FALSE, transform_matrix._data);
+    line_shader.set_uniform("r_Transform", transform_matrix);
 
-    int colorLocation = glGetUniformLocation(line_shader, "r_color");
-    glUniform3fv(colorLocation, 1, color._data);
-    int alphaLocation = glGetUniformLocation(line_shader, "r_alpha");
-    glUniform1f(alphaLocation, alpha);
+    line_shader.set_uniform("r_color", color);
+    line_shader.set_uniform("r_alpha", alpha);
 
     glBindVertexArray(vector_mesh.handles[0]);
     glDrawElements(GL_TRIANGLES, vector_mesh.num_inds[0], GL_UNSIGNED_INT, 0);

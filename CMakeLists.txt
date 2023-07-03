@@ -65,6 +65,7 @@ add_executable( aimpoint
     ${SRC_DIR}/render/renderer.cpp
     ${SRC_DIR}/render/mesh.cpp
     ${SRC_DIR}/render/texture.cpp
+    ${SRC_DIR}/render/shader_program.cpp
 
     ${SRC_DIR}/aimpoint.h
     ${SRC_DIR}/log.h
@@ -78,6 +79,7 @@ add_executable( aimpoint
     ${SRC_DIR}/render/renderer.h
     ${SRC_DIR}/render/mesh.h
     ${SRC_DIR}/render/texture.h
+    ${SRC_DIR}/render/shader_program.h
 )
 
 if(USE_DTV_LIB)

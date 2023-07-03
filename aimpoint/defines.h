@@ -24,6 +24,8 @@ typedef laml::Vec4_highp vec4d;
 
 typedef laml::Mat3 mat3f;
 typedef laml::Mat3_highp mat3d;
+typedef laml::Mat4 mat4f;
+typedef laml::Mat4_highp mat4d;
 
 // Disable by default
 #ifndef USE_DTV

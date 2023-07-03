@@ -3,6 +3,7 @@
 
 #include "mesh.h"
 #include "texture.h"
+#include "shader_program.h"
 
 // for recording
 #if USE_DTV
@@ -19,6 +20,10 @@ struct opengl_renderer {
     void poll_events();
     bool should_window_close();
     double get_time();
+
+    //void start_2D_render();
+    //uint32 get_texture() const { return handle_2D_render_output; }
+    //void end_2D_render();
 
     void start_frame(const laml::Vec3& cam_pos, float cam_yaw, float cam_pitch,
                      const laml::Mat3& render_frame = laml::Mat3());
@@ -42,8 +47,11 @@ private:
 
     void* raw_glfw_window;
 
-    uint32 basic_shader;
-    uint32 line_shader;
+    shader_program basic_2D_shader;
+    shader_program basic_shader;
+    shader_program line_shader;
+
+    uint32 handle_2D_render_output;
 
     uint32 plane_handle;
     triangle_mesh vector_mesh;
