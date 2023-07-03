@@ -11,11 +11,17 @@ struct planet {
     void update(double t, double dt);
 
     vec3d lla_to_fixed(double lat, double lon, double alt); // in deg
+    void fixed_to_lla(vec3d pos_fixed, double *lat, double *lon, double *alt); // in deg
+
     vec3d fixed_to_inertial(vec3d pos_fixed);
     vec3d fixed_to_inertial(vec3d pos_fixed, double t);
-
     void fixed_to_inertial(vec3d pos_fixed, vec3d vel_fixed, vec3d* pos_inertial, vec3d* vel_inertial);
     void fixed_to_inertial(vec3d pos_fixed, vec3d vel_fixed, double t, vec3d* pos_inertial, vec3d* vel_inertial);
+
+    vec3d inertial_to_fixed(vec3d pos_inertial);
+    vec3d inertial_to_fixed(vec3d pos_inertial, double t);
+    void  inertial_to_fixed(vec3d pos_inertial, vec3d vel_inertial, vec3d* pos_fixed, vec3d* vel_fixed);
+    void  inertial_to_fixed(vec3d pos_inertial, vec3d vel_inertial, double t, vec3d* pos_fixed, vec3d* vel_fixed);
 
     vec3d gravity(vec3d pos_inertial);
 
