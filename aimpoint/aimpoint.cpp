@@ -122,8 +122,10 @@ int aimpoint::init() {
 
     earth.load_mesh();
 
-    satellite.set_orbit_circ(&earth, 28.627023, -80.620856, 480000, 0.0);
-    constant_orbit.create_from_state_vectors(satellite.state.position, satellite.state.velocity, 0.0);
+    //satellite.set_orbit_circ(&earth, 28.627023, -80.620856, 480000, 40);
+    satellite.set_orbit_circ(&earth, 69.099597, 49.092329, 250000, 75);
+    //constant_orbit.create_from_state_vectors(satellite.state.position, satellite.state.velocity, 0.0);
+    constant_orbit.create_from_kep_elements(0.0, 7000000, 30, 0, 0, 0, 0);
     constant_orbit.calc_path_mesh();
     J2_perturbations.create_from_state_vectors(satellite.state.position, satellite.state.velocity, 0.0);
     J2_perturbations.calc_path_mesh();

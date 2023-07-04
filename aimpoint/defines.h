@@ -27,6 +27,8 @@ typedef laml::Mat3_highp mat3d;
 typedef laml::Mat4 mat4f;
 typedef laml::Mat4_highp mat4d;
 
+#define trig_tol (1e-9)
+
 // Disable by default
 #ifndef USE_DTV
 #define USE_DTV 0

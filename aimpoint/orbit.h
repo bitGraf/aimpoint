@@ -32,6 +32,7 @@ struct orbit {
     double eccentric_anomaly;
 
     void create_from_state_vectors(const vec3d& pos_eci, const vec3d& vel_eci, double T);
+    void create_from_kep_elements(double e, double a, double i, double Omega, double omega, double M0, double T);
     void advance(double dt);
     void get_state_vectors(vec3d* pos_eci = nullptr, vec3d* vel_eci = nullptr);
 

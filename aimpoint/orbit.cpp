@@ -1,7 +1,5 @@
 #include "orbit.h"
 
-static const double trig_tol = 1e-9;
-
 double eccentric_from_mean(const double e, const double mean_deg, double eccentric_guess_deg) {
     const double tol = 1e-12;
 
@@ -101,6 +99,32 @@ void orbit::create_from_state_vectors(const vec3d& r_vec, const vec3d& v_vec, do
     laml::transform::create_ZXZ_rotation(perifocal_to_inertial, right_ascension, inclination, argument_of_periapsis);
 }
 
+void orbit::create_from_kep_elements(double e, double a, double i, double Omega, double omega, double M0, double T) {
+    eccentricity = e;
+    semimajor_axis = a;
+    inclination = i;
+    right_ascension = Omega;
+    argument_of_periapsis = omega;
+    mean_anomaly_at_epoch = M0;
+
+    // secondary params
+    period = 2*laml::constants::pi<double>*sqrt(semimajor_axis*semimajor_axis*semimajor_axis / body.gm);
+    double semiminor_axis = semimajor_axis*sqrt(1 - eccentricity*eccentricity);
+    specific_ang_momentum = 2*laml::constants::pi<double>*semimajor_axis*semiminor_axis/period;
+    mean_motion = 360.0 / period; // deg/s
+    laml::transform::create_ZXZ_rotation(perifocal_to_inertial, right_ascension, inclination, argument_of_periapsis);
+
+    // calculate anomalies
+    mean_anomaly = mean_anomaly_at_epoch + T*mean_motion;
+    eccentric_anomaly = eccentric_from_mean(eccentricity, mean_anomaly, mean_anomaly);
+    true_anomaly = true_from_eccentric(eccentricity, eccentric_anomaly);
+
+    // cheaty way
+    vec3d pos, vel;
+    get_state_vectors(&pos, &vel);
+    create_from_state_vectors(pos, vel, T);
+}
+
 void orbit::advance(double dt) {
     mean_anomaly += mean_motion*dt;
     if (mean_anomaly > 360.0)
@@ -111,7 +135,6 @@ void orbit::advance(double dt) {
 }
 
 void orbit::get_state_vectors(vec3d* pos_eci, vec3d* vel_eci) {
-    double semiminor_axis = semimajor_axis*sqrt(1 - eccentricity*eccentricity);
     double h = specific_ang_momentum;
 
     // first calculate in perifocal frame
@@ -119,7 +142,6 @@ void orbit::get_state_vectors(vec3d* pos_eci, vec3d* vel_eci) {
     vec3d r_w(r_mag*laml::cosd(true_anomaly), r_mag*laml::sind(true_anomaly), 0.0);
     double v_mag = (body.gm / h);
     vec3d v_w(-v_mag*laml::sind(true_anomaly), v_mag*(eccentricity + laml::cosd(true_anomaly)), 0.0);
-    v_mag = laml::length(v_w);
 
     if (pos_eci)
         *pos_eci = laml::transform::transform_point(perifocal_to_inertial, r_w);
@@ -129,7 +151,6 @@ void orbit::get_state_vectors(vec3d* pos_eci, vec3d* vel_eci) {
 
 #include <glad/gl.h>
 void orbit::calc_path_mesh() {
-    double semiminor_axis = semimajor_axis*sqrt(1 - eccentricity*eccentricity);
     double h = specific_ang_momentum;
 
     // sample the orbit at N points along the orbit for rendering
