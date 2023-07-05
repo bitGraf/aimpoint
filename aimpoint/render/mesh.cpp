@@ -17,17 +17,23 @@ bool triangle_mesh::load_from_mesh_file(const char* filename, float scale_factor
 }
 bool triangle_mesh::load_from_mesh_file(const char* filename, float x_scale_factor, float y_scale_factor, float z_scale_factor) {
     FILE* fid = fopen(filename, "rb");
-
-    //// Load mesh from file
-    //FILE* fid = fopen("../data/Cylinder.mesh", "rb");
     if (fid == nullptr) {
         // try one more directory up
-        //fid = fopen("../../data/Cylinder.mesh", "rb");
+        char new_filename[256];
+        snprintf(new_filename, 256, "../%s", filename);
+        fid = fopen(new_filename, "rb");
     
-        //if (fid == nullptr) {
-            spdlog::critical("Could not open mesh file!\n");
-            return false;
-        //}
+        if (fid == nullptr) {
+            // try one more directory up
+            char new_new_filename[256];
+            snprintf(new_new_filename, 256, "../%s", new_filename);
+            fid = fopen(new_new_filename, "rb");
+    
+            if (fid == nullptr) {
+                spdlog::critical("Could not open mesh file!\n");
+                return false;
+            }
+        }
     }
     fseek(fid, 4, SEEK_SET); // "MESH"
     uint32 filesize, mesh_version;

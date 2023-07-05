@@ -13,11 +13,11 @@ planet::planet() : mat_inertial_to_fixed(1.0f) {
 
 void planet::load_mesh() {
     double polar_radius = equatorial_radius * sqrt(1 - eccentricity_sq);
-    //mesh.load_from_mesh_file("../data/unit_sphere.mesh", equatorial_radius);
-    mesh.load_from_mesh_file("../data/unit_sphere.mesh", equatorial_radius, equatorial_radius, polar_radius);
-    //mesh.load_from_mesh_file("../data/blahaj.mesh", equatorial_radius*0.02f);
+    //mesh.load_from_mesh_file("data/unit_sphere.mesh", equatorial_radius);
+    mesh.load_from_mesh_file("data/unit_sphere.mesh", equatorial_radius, equatorial_radius, polar_radius);
+    //mesh.load_from_mesh_file("data/blahaj.mesh", equatorial_radius*0.02f);
 
-    diffuse.load_texture_file("../data/earth.jpg");
+    diffuse.load_texture_file("data/earth.jpg");
 }
 
 void planet::update(double t, double dt) {

@@ -13,6 +13,29 @@
 
 #include "aimpoint.h"
 
+// silly function :/
+const char* find_imgui_ini_file() {
+    FILE* fid = fopen("data/imgui.ini", "r");
+    if (fid) {
+        fclose(fid);
+        return "data/imgui.ini";
+    }
+
+    fid = fopen("../data/imgui.ini", "r");
+    if (fid) {
+        fclose(fid);
+        return "../data/imgui.ini";
+    }
+
+    fid = fopen("../../data/imgui.ini", "r");
+    if (fid) {
+        fclose(fid);
+        return "../../data/imgui.ini";
+    }
+
+    return "imgui.ini";
+}
+
 static void glfw_error_callback(int error, const char* description);
 static void glfw_key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
 static void glfw_cursor_pos_callback(GLFWwindow* window, double xpos, double ypos);
@@ -172,8 +195,8 @@ int32 opengl_renderer::init_gl_glfw(aimpoint* app_ptr, int32 width, int32 height
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     // load primitives
-    vector_mesh.load_from_mesh_file("../data/vector.mesh", 1.0f, 0.7f, 0.7f);
-    blank_tex.load_texture_file("../data/circle.png");
+    vector_mesh.load_from_mesh_file("data/vector.mesh", 1.0f, 0.7f, 0.7f);
+    blank_tex.load_texture_file("data/circle.png");
 
     // create simple plane mesh
     {
@@ -305,7 +328,7 @@ int32 opengl_renderer::init_gl_glfw(aimpoint* app_ptr, int32 width, int32 height
     ImGui::CreateContext();
     ImPlot::CreateContext();
     ImGuiIO& io = ImGui::GetIO(); (void)io;
-    io.IniFilename = "../data/imgui.ini";
+    io.IniFilename = find_imgui_ini_file();
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;         // Enable Docking

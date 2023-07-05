@@ -111,14 +111,14 @@ int aimpoint::init() {
     renderer.init_gl_glfw(this, 1280, 720);
 
     // Load mesh from file
-    //mesh.load_from_mesh_file("../data/t_bar.mesh");
-    mesh.load_from_mesh_file("../data/blahaj.mesh", 0.01f);
-    dot.load_from_mesh_file("../data/unit_sphere.mesh", 100000.0f);
-    grid_tex.load_texture_file("../data/grid.png");
+    //mesh.load_from_mesh_file("data/t_bar.mesh");
+    mesh.load_from_mesh_file("data/blahaj.mesh", 0.01f);
+    dot.load_from_mesh_file("data/unit_sphere.mesh", 100000.0f);
+    grid_tex.load_texture_file("data/grid.png");
 
-    red_tex.load_texture_file("../data/red.png");
-    green_tex.load_texture_file("../data/green.png");
-    blue_tex.load_texture_file("../data/blue.png");
+    red_tex.load_texture_file("data/red.png");
+    green_tex.load_texture_file("data/green.png");
+    blue_tex.load_texture_file("data/blue.png");
 
     earth.load_mesh();
 
