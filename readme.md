@@ -1,6 +1,29 @@
-hiyaa =^.^=
+# Aimpoint - 6DOF/Orbital propogator sandbox
+![Alt text](docs/anim.gif?raw=true)
 
-## 6-DoF simulation
+## Orbital Propogation
+
+Create an orbit from state vectors ($\bar{r}, \bar{v}, t_0$) or Keplerian elements ($a, e, i, \Omega, \omega, M_0, t_0$ ) and propogate assuming constant mean motion. Extract state vectors and render in 3D using OpenGL.
+
+Alternatively, create a 6DOF simulation body with the same initial states as an orbit, and apply gravity as a forcing function, and propagate the body using any of the built-in numerical integrators listed below.
+
+Ground tracks can also be rendered from either case.
+
+Current scenario being modeled plots the orbits of two satellites using the same initial conditions. The Red dot is propagated using constant orbital elements. The grey dot is propagated using numerical integration and a gravity forcing function applying the J2 perturbation term. Over time the two orbits diverge, as can be seen by the orbital plane and angular momentum vector.
+
+![Alt text](docs/scenario.png?raw=true)
+
+##### Controls: 
+* Drag right click to rotate view.
+* [K] to toggle Keplerian Elements window
+* [A] to toggle Anomalies window (with keplerian window visible)
+* [G] to toggle Ground Tracks window
+* [P] to toggle drawing orbital plane and $\hat{h}$ vector
+* [Spacebar] to toggle speed b/w realtime and uncapped
+* [Esc] to end the sim
+
+
+## Generic 6-DoF simulation
 Pretty basic 6 Degrees-of-Freedom rigid body simulation code (i.e. both rotational and translational motion)
 
 Define initial state and the force and moment functions for a given body and the code will perform fixed-step numerial integration to calculate future states.
