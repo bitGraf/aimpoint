@@ -124,8 +124,8 @@ int aimpoint::init() {
 
     //satellite.set_orbit_circ(&earth, 28.627023, -80.620856, 480000, 40);
     satellite.set_orbit_circ(&earth, 69.099597, 49.092329, 250000, 75);
-    //constant_orbit.create_from_state_vectors(satellite.state.position, satellite.state.velocity, 0.0);
-    constant_orbit.create_from_kep_elements(0.0, 7000000, 30, 0, 0, 0, 0);
+    constant_orbit.create_from_state_vectors(satellite.state.position, satellite.state.velocity, 0.0);
+    //constant_orbit.create_from_kep_elements(0.0, 7000000, 30, 0, 0, 0, 0);
     constant_orbit.calc_path_mesh();
     J2_perturbations.create_from_state_vectors(satellite.state.position, satellite.state.velocity, 0.0);
     J2_perturbations.calc_path_mesh();
@@ -256,14 +256,14 @@ void aimpoint::render() {
     // Orbit from RK4 integrator
     renderer.bind_texture(grid_tex);
     renderer.draw_mesh(dot, satellite.state.position, satellite.state.orientation);
-    renderer.draw_path(constant_orbit.path_handle,  100, vec3f(.3333f, 0.4588f, .5418f));
+    J2_perturbations.create_from_state_vectors(satellite.state.position, satellite.state.velocity, sim_time);
+    J2_perturbations.calc_path_mesh();
+    renderer.draw_path(J2_perturbations.path_handle, 100, vec3f(.3333f, 0.4588f, .5418f));
     
     // Orbit from orbit integrator
     renderer.bind_texture(red_tex);
     renderer.draw_mesh(dot, pos_kep, satellite.state.orientation);
-    J2_perturbations.create_from_state_vectors(satellite.state.position, satellite.state.velocity, sim_time);
-    J2_perturbations.calc_path_mesh();
-    renderer.draw_path(J2_perturbations.path_handle, 100, vec3f(.3333f, 0.4588f, .5418f));
+    renderer.draw_path(constant_orbit.path_handle,  100, vec3f(.3333f, 0.4588f, .5418f));
     
     // draw orbit/equatorial planes
     if (draw_planes) {

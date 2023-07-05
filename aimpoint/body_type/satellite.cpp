@@ -11,9 +11,6 @@ void satellite_body::set_orbit_circ(planet* p, double lat, double lon, double al
     if (inc < geocentric_lat)
         inc = geocentric_lat;
 
-    //TODO: need to figure this algorithm out.
-    //      stuck at a point where RAAN and Arg.Periapsis need to be chosen still
-    //double theta = laml::asind_safe(geocentric_lat / inc, trig_tol);
     double theta = laml::asind_safe(laml::tand(geocentric_lat) / laml::tand(inc), trig_tol);
     double Omega = lon - theta;
     if (Omega < 0.0)
@@ -24,7 +21,7 @@ void satellite_body::set_orbit_circ(planet* p, double lat, double lon, double al
 
     vec3d r = grav_body->fixed_to_inertial(grav_body->lla_to_fixed(lat, lon, alt));
     double r_mag = laml::length(r);
-    double v_circ = sqrt(grav_body->gm / r_mag);
+    double v_circ = sqrt(grav_body->gm / r_mag) * 1.01f; // for stability -> current code does not handle circular orbits well.
     double h = r_mag*v_circ;
 
     vec3d v_dir = laml::normalize(laml::cross(vec3d(0.0, 0.0, 1.0), r));
