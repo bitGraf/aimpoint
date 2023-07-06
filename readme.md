@@ -22,6 +22,8 @@ Current scenario being modeled plots the orbits of two satellites using the same
 * [Spacebar] to toggle speed b/w realtime and uncapped
 * [Esc] to end the sim
 
+## Other Demos
+More demos can be found in the [demos](demos/readme.md) directory.
 
 ## Generic 6-DoF simulation
 Pretty basic 6 Degrees-of-Freedom rigid body simulation code (i.e. both rotational and translational motion)
