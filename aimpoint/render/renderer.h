@@ -10,23 +10,26 @@
 #include "dtv.h"
 #endif
 
-struct aimpoint;
+struct base_app;
 struct opengl_renderer {
     opengl_renderer();
 
-    int32 init_gl_glfw(aimpoint* app_ptr, int32 width, int32 height);
+    int32 init_gl_glfw(base_app* app_ptr, int32 width, int32 height);
     void shutdown();
 
     void poll_events();
     bool should_window_close();
     double get_time();
+    float get_AR() const { return ((float)window_width / (float)window_height); }
 
     void start_2D_render(const texture& bg);
     void draw_dot(float lat, float lon, const vec3f& color = vec3f(1.0f, 1.0f, 1.0f), float alpha = 1.0f);
     void end_2D_render();
     uint32 get_2D_output() const { return handle_2D_render_output; }
 
-    void start_frame(const laml::Vec3& cam_pos, float cam_yaw, float cam_pitch,
+    void clear_screen();
+    void set_projection(const laml::Mat4& mat);
+    void setup_frame(const laml::Vec3& cam_pos, float cam_yaw, float cam_pitch,
                      const laml::Mat3& render_frame = laml::Mat3());
     
     void bind_texture(const texture& tex);
@@ -63,6 +66,7 @@ private:
     texture blank_tex;
 
     mat3f render_frame;
+    mat4f projection_matrix;
 
     // video recording
 #if USE_DTV

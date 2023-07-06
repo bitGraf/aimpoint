@@ -47,14 +47,14 @@ if(USE_DTV_LIB)
 endif(USE_DTV_LIB)
 
 
-###### Application
+###### Aimpoint-lib
 if( MSVC )
     SET( CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /ENTRY:mainCRTStartup" )
 endif()
 
 set(SRC_DIR "aimpoint")
-add_executable( aimpoint 
-    ${SRC_DIR}/aimpoint.cpp
+add_library( aimpoint-lib STATIC
+    ${SRC_DIR}/base_app.cpp
     ${SRC_DIR}/log.cpp
     ${SRC_DIR}/physics.cpp
     ${SRC_DIR}/planet.cpp
@@ -68,7 +68,7 @@ add_executable( aimpoint
     ${SRC_DIR}/render/texture.cpp
     ${SRC_DIR}/render/shader_program.cpp
 
-    ${SRC_DIR}/aimpoint.h
+    ${SRC_DIR}/base_app.h
     ${SRC_DIR}/log.h
     ${SRC_DIR}/defines.h
     ${SRC_DIR}/physics.h
@@ -85,12 +85,20 @@ add_executable( aimpoint
 )
 
 if(USE_DTV_LIB)
-    target_link_libraries( aimpoint ${OPENGL_LIBRARIES} "${SolverName}" imgui implot spdlog::spdlog stb laml direct-to-video)
+    target_link_libraries( aimpoint-lib ${OPENGL_LIBRARIES} imgui implot spdlog::spdlog stb laml direct-to-video)
 else()
-    target_link_libraries( aimpoint ${OPENGL_LIBRARIES} "${SolverName}" imgui implot spdlog::spdlog stb laml)
+    target_link_libraries( aimpoint-lib ${OPENGL_LIBRARIES} imgui implot spdlog::spdlog stb laml)
 endif(USE_DTV_LIB)
 
-target_include_directories( aimpoint PRIVATE aimpoint "${CMAKE_SOURCE_DIR}/deps/DTV/include")
+target_include_directories( aimpoint-lib PRIVATE aimpoint "${CMAKE_SOURCE_DIR}/deps/DTV/include")
+
+####### Aimpoint
+add_executable(aimpoint
+    ${SRC_DIR}/aimpoint.cpp
+    ${SRC_DIR}/aimpoint.h
+    )
+target_link_libraries( aimpoint ${OPENGL_LIBRARIES} aimpoint-lib)
+
 if( MSVC )
     set_target_properties(
         ${AppName} PROPERTIES
@@ -103,6 +111,11 @@ if( MSVC )
     endif()
 endif()
 
+option(INCLUDE_DEMOS "Include projects for various demos" ON) #ON by default
+if(INCLUDE_DEMOS)
+    add_subdirectory("demos")
+endif(INCLUDE_DEMOS)
 
+unset(INCLUDE_DEMOS CACHE) # <---- this is the important!!
 unset(USE_DTV_LIB CACHE) # <---- this is the important!!
 unset(USE_DTV CACHE) # <---- this is the important!!

@@ -13,7 +13,7 @@
 // TMP for KEY_CODES!
 #include <GLFW/glfw3.h>
 
-char* pretty_time(double time, double* value) {
+static char* pretty_time(double time, double* value) {
     double abs_time = laml::abs(time);
     double sign = laml::sign(time);
 
@@ -36,80 +36,7 @@ char* pretty_time(double time, double* value) {
     return "days";
 }
 
-int aimpoint::run() {
-    if (init()) {
-        // failed on initialization
-        return 1;
-    }
-
-    sim_time = 0.0;
-    const double step_time = 1.0 / simulation_rate;
-
-    wall_time = renderer.get_time();
-    double accum_time = 0.0;
-    frame_time = 0.0;
-
-    bool done = false;
-    while(!done) {
-        double new_time = renderer.get_time();
-        frame_time = new_time - wall_time;
-        wall_time = new_time;
-
-        accum_time += frame_time;
-
-        input.xvel = 0.0;
-        input.yvel = 0.0;
-        renderer.poll_events();
-        if (renderer.should_window_close()) {
-            done = true;
-        }
-        input.xvel /= frame_time;
-        input.yvel /= frame_time;
-
-        if (real_time) {
-            while (accum_time >= step_time) {
-                step(step_time);
-                accum_time -= step_time;
-
-                //if (sim_time >= 10.0) { 
-                //    done = true;
-                //    break; 
-                //}
-            }
-        } else {
-            double render_time = wall_time + 1.0/65.0;
-            while (renderer.get_time() < render_time) {
-                step(step_time);
-            }
-        }
-
-        double alpha = accum_time / step_time; // interpolation value [0,1]
-        render();
-    }
-
-    shutdown();
-
-    return 0;
-}
-
 int aimpoint::init() {
-    simulation_rate = 10.0; // Hz
-    sim_frame = 0;
-    render_frame = 0;
-    real_time = true;
-    log_zoom_level = 50;
-    zoom_level = log(((float)log_zoom_level)/10.0f);
-
-    sim_time = 0.0;
-    wall_time = 0.0;
-
-    cam_orbit_point = laml::Vec3(0.0f, 0.0f, 0.0f);
-    cam_orbit_distance = 2.0f*earth.equatorial_radius;
-    yaw = 45;
-    pitch = -30;
-
-    renderer.init_gl_glfw(this, 1280, 720);
-
     // Load mesh from file
     //mesh.load_from_mesh_file("data/t_bar.mesh");
     mesh.load_from_mesh_file("data/blahaj.mesh", 0.01f);
@@ -134,7 +61,12 @@ int aimpoint::init() {
     lci2eci = hmm.LCI2ECI;
     eci2lci = laml::transpose(lci2eci);
 
-    spdlog::info("Application intitialized");
+    mat4f projection_matrix;
+    laml::transform::create_projection_perspective(projection_matrix, 75.0f, renderer.get_AR(), 1000.0f, 50'000'000.0f);
+    renderer.set_projection(projection_matrix);
+    cam_orbit_distance = 2.0f*earth.equatorial_radius;
+
+    spdlog::info("Aimpoint intitialized");
 
     return 0;
 }
@@ -157,22 +89,25 @@ void aimpoint::step(double dt) {
         E.add_point(constant_orbit.eccentric_anomaly);
         v.add_point(constant_orbit.true_anomaly);
     }
-    
-    sim_time += dt;
-    sim_frame++;
 }
 
-void aimpoint::render() {
-    if (input.mouse2) {
-        yaw   -= input.xvel * frame_time * 0.75f;
-        pitch -= input.yvel * frame_time * 0.50f;
-    }
+void aimpoint::render2D() {
+    //renderer.start_2D_render(earth.diffuse);
+    vec3d pos_ecef = earth.inertial_to_fixed(satellite.state.position);
+    double lat, lon, alt;
+    earth.fixed_to_lla(pos_ecef, &lat, &lon, &alt);
+    renderer.draw_dot(lat, lon, vec3f(1.0f, 0.0f, 0.0f), 1.0f);
 
-    if (pitch >  89.0f) pitch =  89.0f;
-    if (pitch < -89.0f) pitch = -89.0f;
-    if (yaw > 360.0f) yaw -= 360.0f;
-    if (yaw <   0.0f) yaw += 360.0f;
+    vec3d pos_kep, vel_kep;
+    constant_orbit.get_state_vectors(&pos_kep, &vel_kep);
+    pos_ecef = earth.inertial_to_fixed(pos_kep);
+    earth.fixed_to_lla(pos_ecef, &lat, &lon, &alt);
+    renderer.draw_dot(lat, lon, vec3f(1.0f, 1.0f, 0.0f), 1.0f);
 
+    //renderer.end_2D_render();
+}
+
+void aimpoint::render3D() {
     laml::Mat3 eci_to_render(0.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f);
     laml::Mat3 lci_to_render(1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, -1.0f, 0.0f);
     laml::Mat3 render_coord_frame(1.0f);
@@ -219,21 +154,7 @@ void aimpoint::render() {
                            -laml::sind(pitch), 
                             laml::cosd(pitch)*laml::cosd(yaw));
 
-    renderer.start_2D_render(earth.diffuse);
-    vec3d pos_ecef = earth.inertial_to_fixed(satellite.state.position);
-    double lat, lon, alt;
-    earth.fixed_to_lla(pos_ecef, &lat, &lon, &alt);
-    renderer.draw_dot(lat, lon, vec3f(1.0f, 0.0f, 0.0f), 1.0f);
-
-    vec3d pos_kep, vel_kep;
-    constant_orbit.get_state_vectors(&pos_kep, &vel_kep);
-    pos_ecef = earth.inertial_to_fixed(pos_kep);
-    earth.fixed_to_lla(pos_ecef, &lat, &lon, &alt);
-    renderer.draw_dot(lat, lon, vec3f(1.0f, 1.0f, 0.0f), 1.0f);
-
-    renderer.end_2D_render();
-
-    renderer.start_frame(cam_pos, yaw, pitch, render_coord_frame);
+    renderer.setup_frame(cam_pos, yaw, pitch, render_coord_frame);
     
     renderer.bind_texture(earth.diffuse);
     renderer.draw_mesh(earth.mesh, laml::Vec3(0.0f), laml::transform::quat_from_mat(earth.mat_fixed_to_inertial));
@@ -261,6 +182,8 @@ void aimpoint::render() {
     renderer.draw_path(J2_perturbations.path_handle, 100, vec3f(.3333f, 0.4588f, .5418f));
     
     // Orbit from orbit integrator
+    vec3d pos_kep, vel_kep;
+    constant_orbit.get_state_vectors(&pos_kep, &vel_kep);
     renderer.bind_texture(red_tex);
     renderer.draw_mesh(dot, pos_kep, satellite.state.orientation);
     renderer.draw_path(constant_orbit.path_handle,  100, vec3f(.3333f, 0.4588f, .5418f));
@@ -276,10 +199,10 @@ void aimpoint::render() {
         renderer.draw_plane(vec3f(0.0f, 0.0f, 1.0f), 30000000, vec3f(0.8f, 0.70f, 0.80f), 0.3f);
         renderer.draw_plane(J2_perturbations.specific_ang_momentum_unit, 20000000, vec3f(1.0f, 0.96f, 0.68f), 0.7f);
     }
+}
 
+void aimpoint::renderUI() {
     // Draw UI
-    renderer.start_debug_UI();
-
     const ImGuiIO& io = ImGui::GetIO();
 
     if (draw_ground_tracks) {
@@ -296,30 +219,6 @@ void aimpoint::render() {
             //ImGui::Image((ImTextureID)tmp, wsize, ImVec2(0, 1), ImVec2(1, 0));
             ImGui::EndChild();
         }
-        ImGui::End();
-    }
-
-    if (show_info_panel) {
-        ImGui::Begin("App Info", NULL, ImGuiWindowFlags_NoResize);
-
-        static uint64 last_frames = 0;
-        double steps_per_second = (double)(sim_frame - last_frames);
-        last_frames = sim_frame;
-        double sim_scale = io.Framerate * steps_per_second * (1.0/simulation_rate);
-        sim_scale_history.add_point(sim_scale);
-        ImGui::Text("Avg. %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
-        ImGui::Text("Timestep: %.3f s (%.1f Hz)", (1.0/simulation_rate), simulation_rate);
-        ImGui::Text("Sim Scale: %5.1fX", sim_scale_history.get_avg());
-        ImGui::Separator();
-
-        ImGui::Text("Camera State:");
-        ImGui::Text("Yaw:%.2f    Pitch:%.2f", yaw, pitch);
-        //ImGui::Text("[%.1f, %.1f, %.1f]", cam_pos.x, cam_pos.y, cam_pos.z);
-        ImGui::Separator();
-
-        ImGui::Text("Earth State:");
-        ImGui::Text("Yaw:%.2f", earth.yaw*laml::constants::rad2deg<double>);
-
         ImGui::End();
     }
 
@@ -402,42 +301,12 @@ void aimpoint::render() {
         } break;
     }
     ImGui::End();
-
-    ImGui::Begin("Zoom", NULL, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
-    //ImGui::Begin("Zoom", NULL, ImGuiWindowFlags_NoTitleBar);
-    ImGui::Text("Zoom: %.1f", zoom_level);
-    //ImGui::Text("LogZoom: %d", log_zoom_level);
-    ImGui::End();
-
-    ImGui::Begin("Clock", NULL, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
-    //ImGui::Begin("Clock", NULL, ImGuiWindowFlags_NoTitleBar);
-    double value = 0.0f;
-    char* unit = pretty_time(sim_time, &value);
-    ImGui::Text("T: %.1f %s", value, unit);
-    ImGui::End();
-
-    renderer.end_debug_UI();
-
-    renderer.end_frame();
-
-    render_frame++;
 }
 
 void aimpoint::shutdown() {
-    renderer.shutdown();
-
-    spdlog::info("Application shutdown");
 }
 
 void aimpoint::key_callback(int key, int scancode, int action, int mods) {
-    if (key == GLFW_KEY_I && action == GLFW_PRESS) {
-        show_info_panel = !show_info_panel;
-    }
-
-    if (key == GLFW_KEY_SPACE && action == GLFW_PRESS) {
-        real_time = !real_time;
-    }
-
     // toggle frame (Earth-centered vs. Launch site)
     if (key == GLFW_KEY_R && action == GLFW_PRESS) {
         switch(render_frame_enum) {
@@ -496,42 +365,12 @@ void aimpoint::key_callback(int key, int scancode, int action, int mods) {
 }
 
 void aimpoint::mouse_pos_callback(double xpos, double ypos) {
-    input.xvel += (xpos - input.xpos);
-    input.yvel += (ypos - input.ypos);
-
-    input.xpos = xpos;
-    input.ypos = ypos;
 }
 
 void aimpoint::mouse_button_callback(int button, int action, int mods) {
-    if (button == GLFW_MOUSE_BUTTON_1 && action == GLFW_PRESS) {
-        input.mouse1 = true;
-    }
-    if (button == GLFW_MOUSE_BUTTON_1 && action == GLFW_RELEASE) {
-        input.mouse1 = false;
-    }
-
-    if (button == GLFW_MOUSE_BUTTON_2 && action == GLFW_PRESS) {
-        input.mouse2 = true;
-    }
-    if (button == GLFW_MOUSE_BUTTON_2 && action == GLFW_RELEASE) {
-        input.mouse2 = false;
-    }
 }
 
 void aimpoint::mouse_scroll_callback(double xoffset, double yoffset) {
-    int32 yoff = (yoffset > 0.0) ? -1 : ((yoffset < 0.0) ? 1 : 0);
-    int32 rate = 1;
-
-    if ((log_zoom_level == 30 && yoff > 0) || log_zoom_level >= 33) rate = 3;
-    if ((log_zoom_level == 45 && yoff > 0) || log_zoom_level >= 50) rate = 5;
-    
-    log_zoom_level += yoff*rate; // negative to swap dir
-
-    if (log_zoom_level > 100) log_zoom_level = 100;
-    if (log_zoom_level <  17) log_zoom_level =  17;
-
-    zoom_level = log(((float)log_zoom_level)/10.0f);
 }
 
 
@@ -546,11 +385,11 @@ void aimpoint::mouse_scroll_callback(double xoffset, double yoffset) {
 
 // Entry point
 int main(int argc, char** argv) {
-    aimpoint app;
 
     set_terminal_log_level(log_level::info);
     spdlog::info("Creating application...");
 
+    aimpoint app;
     app.run();
 
     system("pause");

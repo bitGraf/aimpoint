@@ -11,7 +11,7 @@
 
 #include "log.h"
 
-#include "aimpoint.h"
+#include "base_app.h"
 
 // silly function :/
 const char* find_imgui_ini_file() {
@@ -55,7 +55,7 @@ opengl_renderer::opengl_renderer() : raw_glfw_window(nullptr),
                                      window_width(64), 
                                      window_height(48) {}
 
-int32 opengl_renderer::init_gl_glfw(aimpoint* app_ptr, int32 width, int32 height) {
+int32 opengl_renderer::init_gl_glfw(base_app* app_ptr, int32 width, int32 height) {
     window_width = width;
     window_height = height;
 
@@ -344,9 +344,33 @@ int32 opengl_renderer::init_gl_glfw(aimpoint* app_ptr, int32 width, int32 height
     const char* glsl_version = "#version 130";
     ImGui_ImplOpenGL3_Init(glsl_version);
 
+    // initialize shaders
+    float AR = ((float)window_width / (float)window_height);
+    //laml::transform::create_projection_perspective(projection_matrix, 75.0f, AR, 1000.0f, 50'000'000.0f);
+    laml::transform::create_projection_perspective(projection_matrix, 75.0f, AR, 0.1f, 1000.0f);
+    basic_shader.bind();
+    basic_shader.set_uniform("r_Projection", projection_matrix);
+    line_shader.bind();
+    line_shader.set_uniform("r_Projection", projection_matrix);
+
+    basic_2D_shader.bind();
+    laml::Mat4 projection_matrix_2D;
+    laml::transform::create_projection_orthographic(projection_matrix_2D, -180.0f, 180.0f, -90.0f, 90.0f, -1.0f, 1.0f);
+    basic_2D_shader.set_uniform("r_Projection", projection_matrix_2D);
+
     init_recording();
 
     return 0;
+}
+
+void opengl_renderer::set_projection(const laml::Mat4& mat) {
+    projection_matrix = mat;
+
+    basic_shader.bind();
+    basic_shader.set_uniform("r_Projection", projection_matrix);
+
+    line_shader.bind();
+    line_shader.set_uniform("r_Projection", projection_matrix);
 }
 
 void opengl_renderer::shutdown() {
@@ -372,23 +396,23 @@ void glfw_key_callback(GLFWwindow* window, int key, int scancode, int action, in
     if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
         glfwSetWindowShouldClose(window, GLFW_TRUE);
 
-    aimpoint* app = (aimpoint*)glfwGetWindowUserPointer(window);
-    app->key_callback(key, scancode, action, mods);
+    base_app* app = (base_app*)glfwGetWindowUserPointer(window);
+    app->base_key_callback(key, scancode, action, mods);
 }
 
 void glfw_cursor_pos_callback(GLFWwindow* window, double xpos, double ypos) {
-    aimpoint* app = (aimpoint*)glfwGetWindowUserPointer(window);
-    app->mouse_pos_callback(xpos, ypos);
+    base_app* app = (base_app*)glfwGetWindowUserPointer(window);
+    app->base_mouse_pos_callback(xpos, ypos);
 }
 
 void glfw_mouse_button_callback(GLFWwindow* window, int button, int action, int mods) {
-    aimpoint* app = (aimpoint*)glfwGetWindowUserPointer(window);
-    app->mouse_button_callback(button, action, mods);
+    base_app* app = (base_app*)glfwGetWindowUserPointer(window);
+    app->base_mouse_button_callback(button, action, mods);
 }
 
 void glfw_scroll_callback(GLFWwindow* window, double xoffset, double yoffset) {
-    aimpoint* app = (aimpoint*)glfwGetWindowUserPointer(window);
-    app->mouse_scroll_callback(xoffset, yoffset);
+    base_app* app = (base_app*)glfwGetWindowUserPointer(window);
+    app->base_mouse_scroll_callback(xoffset, yoffset);
 }
 
 // main functions
@@ -402,13 +426,15 @@ double opengl_renderer::get_time() {
     return glfwGetTime();
 }
 
-void opengl_renderer::start_frame(const laml::Vec3& cam_pos, float cam_yaw, float cam_pitch,
-                                  const laml::Mat3& new_render_frame){
-    render_frame = new_render_frame;
-
+void opengl_renderer::clear_screen() {
     //glClearColor(0.2f, 0.4f, 0.1f, 1.0f);
     glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+}
+
+void opengl_renderer::setup_frame(const laml::Vec3& cam_pos, float cam_yaw, float cam_pitch,
+                                  const laml::Mat3& new_render_frame){
+    render_frame = new_render_frame;
 
     {
         line_shader.bind();
@@ -417,16 +443,6 @@ void opengl_renderer::start_frame(const laml::Vec3& cam_pos, float cam_yaw, floa
         laml::transform::create_transform(cam_transform, cam_yaw, cam_pitch, 0.0f, cam_pos);
         laml::transform::create_view_matrix_from_transform(view_matrix, cam_transform);
         line_shader.set_uniform("r_View", view_matrix);
-
-        laml::Mat4 projection_matrix;
-        float AR = ((float)window_width / (float)window_height);
-        laml::transform::create_projection_perspective(projection_matrix, 75.0f, AR, 1000.0f, 50'000'000.0f);
-        //laml::transform::create_projection_orthographic(projection_matrix, -10.0f, 10.0f, -10.0f, 10.0f, -10.0f, 10.0f);
-        line_shader.set_uniform("r_Projection", projection_matrix);
-
-        //laml::Mat4 transform_matrix(1.0f);
-        //int transformLocation = glGetUniformLocation(line_shader, "r_Transform");
-        //glUniformMatrix4fv(transformLocation, 1, GL_FALSE, transform_matrix._data);
 
         vec3f color(1.0f, 1.0f, 1.0f);
         line_shader.set_uniform("r_color", color);
@@ -442,12 +458,6 @@ void opengl_renderer::start_frame(const laml::Vec3& cam_pos, float cam_yaw, floa
         laml::transform::create_transform(cam_transform, cam_yaw, cam_pitch, 0.0f, cam_pos);
         laml::transform::create_view_matrix_from_transform(view_matrix, cam_transform);
         line_shader.set_uniform("r_View", view_matrix);
-
-        laml::Mat4 projection_matrix;
-        float AR = ((float)window_width / (float)window_height);
-        laml::transform::create_projection_perspective(projection_matrix, 75.0f, AR, 1000.0f, 50'000'000.0f);
-        //laml::transform::create_projection_orthographic(projection_matrix, -10.0f, 10.0f, -10.0f, 10.0f, -10.0f, 10.0f);
-        line_shader.set_uniform("r_Projection", projection_matrix);
     }
 }
 
@@ -556,10 +566,6 @@ void opengl_renderer::start_2D_render(const texture& bg) {
 
     basic_2D_shader.bind();
 
-    laml::Mat4 projection_matrix;
-    laml::transform::create_projection_orthographic(projection_matrix, -180.0f, 180.0f, -90.0f, 90.0f, -1.0f, 1.0f);
-    basic_2D_shader.set_uniform("r_Projection", projection_matrix);
-
     basic_2D_shader.set_uniform("r_color", vec3f(1.0f, 1.0f, 1.0f));
     basic_2D_shader.set_uniform("r_alpha", 1.0f);
     basic_2D_shader.set_uniform("r_position", laml::Vec2(0.0f, 0.0f));
@@ -588,7 +594,7 @@ void opengl_renderer::end_2D_render() {
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
-void opengl_renderer::start_debug_UI() {    
+void opengl_renderer::start_debug_UI() {
     // Start the Dear ImGui frame
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplGlfw_NewFrame();

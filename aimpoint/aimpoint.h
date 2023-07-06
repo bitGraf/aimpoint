@@ -1,9 +1,7 @@
 #pragma once
 #include "defines.h"
+#include "base_app.h"
 
-#include "render/renderer.h"
-#include "render/mesh.h"
-#include "physics.h"
 #include "body_type/rocket.h"
 #include "body_type/satellite.h"
 
@@ -54,42 +52,28 @@ enum coordinate_frame : int {
     ECLIPTIC = 4,
 };
 
-struct aimpoint {
+struct aimpoint : public base_app {
 public:
     aimpoint() : constant_orbit(earth), J2_perturbations(earth) {}
-    int run();
 
-    void key_callback(int key, int scancode, int action, int mods);
-    void mouse_pos_callback(double xpos, double ypos);
-    void mouse_button_callback(int button, int action, int mods);
-    void mouse_scroll_callback(double xoffset, double yoffset);
+    void key_callback(int key, int scancode, int action, int mods) override;
+    void mouse_pos_callback(double xpos, double ypos) override;
+    void mouse_button_callback(int button, int action, int mods) override;
+    void mouse_scroll_callback(double xoffset, double yoffset) override;
 
 private:
-    int init();
-    void step(double dt);
-    void render();
-    void shutdown();
+    int init() override;
+    void step(double dt) override;
+    void render2D() override;
+    void render3D() override;
+    void renderUI() override;
+    void shutdown() override;
 
-    bool real_time;
-
-    double simulation_rate;
-    uint64 sim_frame;
-    uint64 render_frame;
-
-    double sim_time;
-    double wall_time;
-    double frame_time;
-
-    float zoom_level = 1.0f;
-    int32 log_zoom_level;
-
-    bool show_info_panel = false;
     bool show_keplerian_panel = false;
     bool show_anomoly_panel = false;
     bool draw_planes = false;
     bool draw_ground_tracks = false;
 
-    opengl_renderer renderer;
     triangle_mesh mesh, dot;
     texture grid_tex, red_tex, green_tex, blue_tex;
     coordinate_frame render_frame_enum = ECI;
@@ -97,24 +81,9 @@ private:
     planet earth;
     orbit constant_orbit, J2_perturbations;
     satellite_body satellite;
+
     rocket hmm;
-
-    float cam_orbit_distance;
-    laml::Vec3 cam_orbit_point;
-    float yaw;   // [  0, 360]
-    float pitch; // [-89,  89]
     mat3d lci2eci, eci2lci;
-
-    struct {
-        double xpos = 0; 
-        double ypos = 0;
-
-        double xvel = 0; 
-        double yvel = 0;
-
-        bool mouse1 = false; 
-        bool mouse2 = false;
-    } input;
 
     // plotting
     plot_signal<double, orbit_buffer_length> t;
