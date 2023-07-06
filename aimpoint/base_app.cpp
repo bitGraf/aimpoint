@@ -49,7 +49,7 @@ int base_app::run(int32 window_width, int32 window_heigt) {
     double accum_time = 0.0;
     frame_time = 0.0;
 
-    bool done = false;
+    done = false;
     while(!done) {
         double new_time = renderer.get_time();
         frame_time = new_time - wall_time;
@@ -71,15 +71,13 @@ int base_app::run(int32 window_width, int32 window_heigt) {
                 base_step(step_time);
                 accum_time -= step_time;
 
-                //if (sim_time >= 10.0) { 
-                //    done = true;
-                //    break; 
-                //}
+                if (done) break;
             }
         } else {
             double render_time = wall_time + 1.0/65.0;
             while (renderer.get_time() < render_time) {
                 base_step(step_time);
+                if (done) break;
             }
         }
 
@@ -112,6 +110,10 @@ int base_app::base_init(int32 window_width, int32 window_heigt) {
     blank_tex.load_texture_file("data/blank.png");
 
     spdlog::info("Application intitialized");
+
+    if (USE_DTV) {
+        spdlog::info("Recording...");
+    }
 
     return init();
 }

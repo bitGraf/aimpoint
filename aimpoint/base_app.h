@@ -35,6 +35,7 @@ protected:
     virtual void shutdown() {};
 
     bool real_time;
+    bool done;
 
     double simulation_rate;
     uint64 sim_frame;

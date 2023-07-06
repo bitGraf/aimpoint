@@ -20,4 +20,11 @@ struct demo_app : public base_app {
     simulation_body body;
     triangle_mesh mesh;
     texture tex;
+
+    bool inertial_frame;
+    bool show_plots;
+    plot_signal<double, 5000> w_t;
+    plot_signal<double, 5000> w_x;
+    plot_signal<double, 5000> w_y;
+    plot_signal<double, 5000> w_z;
 };

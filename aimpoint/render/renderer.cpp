@@ -530,6 +530,7 @@ void opengl_renderer::draw_plane(vec3f normal, float scale, vec3f color, float a
 void opengl_renderer::draw_vector(vec3f vector, float scale, vec3f color, float alpha) {
     line_shader.bind();
 
+    vector = laml::normalize(vector);
     vec3f Z_vec(0.0f, 0.0f, 1.0f);
 
     vec3f tangent = laml::cross(Z_vec, vector);

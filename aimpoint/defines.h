@@ -1,3 +1,4 @@
+#pragma once
 #include <cstdint>
 
 #include <laml/laml.hpp>
@@ -28,6 +29,37 @@ typedef laml::Mat4 mat4f;
 typedef laml::Mat4_highp mat4d;
 
 #define trig_tol (1e-9)
+
+template<typename T, size_t num_points>
+struct plot_signal {
+    plot_signal() : length(num_points) {
+        for (size_t n = 0; n < num_points; n++) {
+            data[n] = static_cast<T>(0);
+        }
+    }
+
+    void add_point(T value) {
+        data[offset] = value;
+
+        offset++;
+
+        if (offset == num_points)
+            offset = 0;
+    }
+
+    T get_avg() {
+        T sum = 0;
+        for (size_t n = 0; n < num_points; n++) {
+            sum = sum + data[n];
+        }
+        return sum / static_cast<T>(num_points);
+    }
+
+    T data[num_points];
+
+    size_t offset = 0;
+    const size_t length;
+};
 
 // Disable by default
 #ifndef USE_DTV

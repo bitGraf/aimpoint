@@ -90,7 +90,7 @@ else()
     target_link_libraries( aimpoint-lib ${OPENGL_LIBRARIES} imgui implot spdlog::spdlog stb laml)
 endif(USE_DTV_LIB)
 
-target_include_directories( aimpoint-lib PRIVATE aimpoint "${CMAKE_SOURCE_DIR}/deps/DTV/include")
+target_include_directories( aimpoint-lib PUBLIC aimpoint "${CMAKE_SOURCE_DIR}/deps/DTV/include")
 
 ####### Aimpoint
 add_executable(aimpoint

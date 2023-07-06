@@ -13,37 +13,6 @@ const size_t buffer_length = num_seconds_history * 60;
 const size_t orbit_buffer_length = (200) * 60;
 const size_t frames_per_min = 60*60;
 
-template<typename T, size_t num_points>
-struct plot_signal {
-    plot_signal() : length(num_points) {
-        for (size_t n = 0; n < num_points; n++) {
-            data[n] = static_cast<T>(0);
-        }
-    }
-
-    void add_point(T value) {
-        data[offset] = value;
-
-        offset++;
-
-        if (offset == num_points)
-            offset = 0;
-    }
-
-    T get_avg() {
-        T sum = 0;
-        for (size_t n = 0; n < num_points; n++) {
-            sum = sum + data[n];
-        }
-        return sum / static_cast<T>(num_points);
-    }
-
-    T data[num_points];
-
-    size_t offset = 0;
-    const size_t length;
-};
-
 enum coordinate_frame : int {
     ECI = 0,
     ECEF = 1,
