@@ -23,7 +23,7 @@ Current scenario being modeled plots the orbits of two satellites using the same
 * [Esc] to end the sim
 
 ## Other Demos
-More demos can be found in the [demos](demos/readme.md) directory.
+More demos can be found in the [demos](demos/) directory.
 
 ## Generic 6-DoF simulation
 Pretty basic 6 Degrees-of-Freedom rigid body simulation code (i.e. both rotational and translational motion)
