@@ -26,7 +26,7 @@ struct planet {
     vec3d gravity(vec3d pos_inertial);
     vec3d gravity_J2(vec3d pos_inertial);
 
-    mat3d create_local_inertial(double lat, double lon, double alt);
+    mat3d create_local_inertial(double lat, double lon, double az);
 
     triangle_mesh mesh;
     texture diffuse;

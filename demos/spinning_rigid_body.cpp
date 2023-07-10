@@ -5,7 +5,7 @@
 #include "implot.h"
 #include <GLFW/glfw3.h>
 
-void demo_app::key_callback(int key, int scancode, int action, int mods) {
+void spinning_rigid_body_demo::key_callback(int key, int scancode, int action, int mods) {
     if ((key == GLFW_KEY_P) && (action == GLFW_PRESS)) {
         show_plots = !show_plots;
     }
@@ -14,17 +14,17 @@ void demo_app::key_callback(int key, int scancode, int action, int mods) {
         inertial_frame = !inertial_frame;
     }
 }
-void demo_app::mouse_pos_callback(double xpos, double ypos) {
+void spinning_rigid_body_demo::mouse_pos_callback(double xpos, double ypos) {
 
 }
-void demo_app::mouse_button_callback(int button, int action, int mods) {
+void spinning_rigid_body_demo::mouse_button_callback(int button, int action, int mods) {
 
 }
-void demo_app::mouse_scroll_callback(double xoffset, double yoffset) {
+void spinning_rigid_body_demo::mouse_scroll_callback(double xoffset, double yoffset) {
 
 }
 
-int demo_app::init() {
+int spinning_rigid_body_demo::init() {
     body.set_mass(1.0);
     body.set_inertia(0.2, 0.3, 0.4);
 
@@ -55,15 +55,15 @@ int demo_app::init() {
 
     return 0;
 }
-void demo_app::step(double dt) {
+void spinning_rigid_body_demo::step(double dt) {
     body.integrate_states(sim_time, dt);
 
     if ((sim_time + dt) > 6.28) done = true;
 }
-void demo_app::render2D() {
+void spinning_rigid_body_demo::render2D() {
 
 }
-void demo_app::render3D() {
+void spinning_rigid_body_demo::render3D() {
     laml::Vec3 cam_pos = cam_orbit_point + 
                          zoom_level*cam_orbit_distance*laml::Vec3(
                          laml::cosd(pitch)*laml::sind(yaw), 
@@ -96,7 +96,7 @@ void demo_app::render3D() {
     // draw ground plane
     renderer.draw_plane(vec3f(0.0f, 1.0f, 0.0f), 1.0f, vec3f(0.8f, 0.70f, 0.80f), 0.3f);
 }
-void demo_app::renderUI() {
+void spinning_rigid_body_demo::renderUI() {
     if (show_plots) {
         // Plots
         w_t.add_point(sim_time);
@@ -122,7 +122,7 @@ void demo_app::renderUI() {
         ImGui::End();
     }
 }
-void demo_app::shutdown() {
+void spinning_rigid_body_demo::shutdown() {
 
 }
 
@@ -131,7 +131,7 @@ int main() {
     set_terminal_log_level(log_level::info);
     spdlog::info("Spinning Rigid Body demo...");
 
-    demo_app app;
+    spinning_rigid_body_demo app;
     app.run(1280, 720);
 
     return 0;

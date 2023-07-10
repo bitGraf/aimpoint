@@ -1,7 +1,10 @@
 #include "base_app.h"
 
-struct spinning_rigid_body_demo : public base_app {
-    spinning_rigid_body_demo() {}
+#include "planet.h"
+#include "flat_earth_rocket.h"
+
+struct flat_earth_launch_demo : public base_app {
+    flat_earth_launch_demo() {}
 
     // user-override functions
     void key_callback(int key, int scancode, int action, int mods) override;
@@ -17,14 +20,21 @@ struct spinning_rigid_body_demo : public base_app {
     void renderUI() override;
     void shutdown() override;
 
-    simulation_body body;
-    triangle_mesh mesh;
-    texture tex;
+    triangle_mesh earth_plane;
+    triangle_mesh rocket_mesh;
+    texture earth_diffuse;
+    vec3f plane_offset;
 
-    bool inertial_frame;
-    bool show_plots;
-    plot_signal<double, 5000> w_t;
-    plot_signal<double, 5000> w_x;
-    plot_signal<double, 5000> w_y;
-    plot_signal<double, 5000> w_z;
+    bool draw_flat_earth = false;
+
+    laml::Quat_highp earth_rot;
+    vec3d earth_offset;
+    float f;
+
+    rocket_flat_earth_ltg body;
+
+    float t_data[1000];
+    float a_data[1000];
+
+    planet earth;
 };

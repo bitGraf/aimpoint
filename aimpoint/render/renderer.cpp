@@ -433,8 +433,10 @@ void opengl_renderer::clear_screen() {
 }
 
 void opengl_renderer::setup_frame(const laml::Vec3& cam_pos, float cam_yaw, float cam_pitch,
-                                  const laml::Mat3& new_render_frame){
+                                  const laml::Mat3& new_render_frame,
+                                  float new_render_scale){
     render_frame = new_render_frame;
+    render_scale = new_render_scale;
 
     {
         line_shader.bind();
@@ -475,9 +477,11 @@ void opengl_renderer::draw_mesh(const triangle_mesh& mesh,
     //laml::transform::create_transform_translate(transform_matrix, position);
     //transform_matrix = laml::mul(laml::Mat4(render_frame), transform_matrix);
     laml::Quat r = laml::transform::quat_from_mat(render_frame);
+    vec3f scale_vec(render_scale, render_scale, render_scale);
 
-    laml::transform::create_transform(transform_matrix, laml::mul(r, orientation), laml::transform::transform_point(render_frame, position));
-    basic_shader.set_uniform("r_Transform", transform_matrix);
+    //laml::transform::create_transform(transform_matrix, laml::mul(r, orientation), laml::transform::transform_point(render_frame, position), scale_vec);
+    laml::transform::create_transform(transform_matrix, orientation, position, scale_vec);
+    basic_shader.set_uniform("r_Transform", laml::mul(mat4f(render_frame), transform_matrix));
 
     for (int n = 0; n < mesh.num_prims; n++) {
         glBindVertexArray(mesh.handles[n]);
@@ -544,7 +548,7 @@ void opengl_renderer::draw_vector(vec3f vector, float scale, vec3f color, float 
     vec3f bitangent = laml::cross(vector, tangent);
 
     mat3f rot(vector, tangent, bitangent);
-    laml::Mat4 transform_matrix(laml::mul(render_frame, rot*scale));
+    laml::Mat4 transform_matrix(laml::mul(render_frame, rot*scale*render_scale));
 
     line_shader.set_uniform("r_Transform", transform_matrix);
 

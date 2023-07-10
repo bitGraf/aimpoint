@@ -2,7 +2,6 @@
 #include "defines.h"
 #include "base_app.h"
 
-#include "body_type/rocket.h"
 #include "body_type/satellite.h"
 
 #include "planet.h"
@@ -47,11 +46,12 @@ private:
     texture grid_tex, red_tex, green_tex, blue_tex;
     coordinate_frame render_frame_enum = ECI;
 
+    double launch_lat, launch_lon, launch_az;
+
     planet earth;
     orbit constant_orbit, J2_perturbations;
     satellite_body satellite;
 
-    rocket hmm;
     mat3d lci2eci, eci2lci;
 
     // plotting

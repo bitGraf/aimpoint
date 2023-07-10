@@ -73,6 +73,10 @@ bool texture::load_texture_file(const char* filename) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
+    GLfloat val;
+    glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY, &val);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY , val);
+
     stbi_image_free(data);
 
     return true;

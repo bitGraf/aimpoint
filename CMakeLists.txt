@@ -60,7 +60,6 @@ add_library( aimpoint-lib STATIC
     ${SRC_DIR}/planet.cpp
     ${SRC_DIR}/orbit.cpp
     ${SRC_DIR}/body_type/t_bar.cpp
-    ${SRC_DIR}/body_type/rocket.cpp
     ${SRC_DIR}/body_type/mass_spring_damper.cpp
     ${SRC_DIR}/body_type/satellite.cpp
     ${SRC_DIR}/render/renderer.cpp
@@ -75,7 +74,6 @@ add_library( aimpoint-lib STATIC
     ${SRC_DIR}/planet.h
     ${SRC_DIR}/orbit.h
     ${SRC_DIR}/body_type/t_bar.h
-    ${SRC_DIR}/body_type/rocket.h
     ${SRC_DIR}/body_type/mass_spring_damper.h
     ${SRC_DIR}/body_type/satellite.h
     ${SRC_DIR}/render/renderer.h

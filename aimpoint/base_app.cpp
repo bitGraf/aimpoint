@@ -261,7 +261,7 @@ void base_app::base_mouse_scroll_callback(double xoffset, double yoffset) {
     
     log_zoom_level += yoff*rate; // negative to swap dir
 
-    if (log_zoom_level > 100) log_zoom_level = 100;
+    if (log_zoom_level > 500) log_zoom_level = 500;
     if (log_zoom_level <  17) log_zoom_level =  17;
 
     zoom_level = log(((float)log_zoom_level)/10.0f);

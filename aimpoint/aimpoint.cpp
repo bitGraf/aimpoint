@@ -57,14 +57,20 @@ int aimpoint::init() {
     J2_perturbations.create_from_state_vectors(satellite.state.position, satellite.state.velocity, 0.0);
     J2_perturbations.calc_path_mesh();
 
-    hmm.launch(&earth);
-    lci2eci = hmm.LCI2ECI;
-    eci2lci = laml::transpose(lci2eci);
+    //hmm.launch(&earth);
+    //lci2eci = hmm.LCI2ECI;
+    //eci2lci = laml::transpose(lci2eci);
 
     mat4f projection_matrix;
     laml::transform::create_projection_perspective(projection_matrix, 75.0f, renderer.get_AR(), 1000.0f, 50'000'000.0f);
     renderer.set_projection(projection_matrix);
     cam_orbit_distance = 2.0f*earth.equatorial_radius;
+
+    launch_lat = 28.3922;
+    launch_lon = -80.6077;
+    launch_az = 90.0;
+    lci2eci = earth.create_local_inertial(launch_lat, launch_lon, launch_az);
+    eci2lci = laml::transpose(lci2eci);
 
     spdlog::info("Aimpoint intitialized");
 
@@ -133,7 +139,7 @@ void aimpoint::render3D() {
                            eci2lci.c_13, eci2lci.c_23, eci2lci.c_33);
             render_coord_frame = laml::mul(lci_to_render, _eci2lci);
 
-            vec3f lci_point = laml::transform::transform_point(eci2lci, earth.fixed_to_inertial(earth.lla_to_fixed(hmm.launch_lat,hmm.launch_lon,0.0), 0.0));
+            vec3f lci_point = laml::transform::transform_point(eci2lci, earth.fixed_to_inertial(earth.lla_to_fixed(launch_lat,launch_lon,0.0), 0.0));
             cam_orbit_point = laml::transform::transform_point(lci_to_render, lci_point);
             frame_zoom_level = 0.25f;
         } break;
@@ -142,7 +148,7 @@ void aimpoint::render3D() {
                            eci2lci.c_12, eci2lci.c_22, eci2lci.c_32,
                            eci2lci.c_13, eci2lci.c_23, eci2lci.c_33);
             render_coord_frame = laml::mul(lci_to_render, laml::mul(_eci2lci, earth.mat_inertial_to_fixed));
-            vec3f lci_point = laml::transform::transform_point(eci2lci, earth.fixed_to_inertial(earth.lla_to_fixed(hmm.launch_lat,hmm.launch_lon,0.0), 0.0));
+            vec3f lci_point = laml::transform::transform_point(eci2lci, earth.fixed_to_inertial(earth.lla_to_fixed(launch_lat,launch_lon,0.0), 0.0));
             cam_orbit_point = laml::transform::transform_point(lci_to_render, lci_point);
             frame_zoom_level = 0.25f;
         } break;
@@ -171,7 +177,7 @@ void aimpoint::render3D() {
     
     // dot at launch site
     renderer.bind_texture(red_tex);
-    vec3f launch_site = earth.fixed_to_inertial(earth.lla_to_fixed(hmm.launch_lat,hmm.launch_lon,0.0));
+    vec3f launch_site = earth.fixed_to_inertial(earth.lla_to_fixed(launch_lat,launch_lon,0.0));
     renderer.draw_mesh(dot, launch_site, laml::Quat());
     
     // Orbit from RK4 integrator

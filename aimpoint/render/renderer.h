@@ -30,7 +30,8 @@ struct opengl_renderer {
     void clear_screen();
     void set_projection(const laml::Mat4& mat);
     void setup_frame(const laml::Vec3& cam_pos, float cam_yaw, float cam_pitch,
-                     const laml::Mat3& render_frame = laml::Mat3());
+                     const laml::Mat3& render_frame = laml::Mat3(),
+                     float render_scale = 1.0f);
     
     void bind_texture(const texture& tex);
     void draw_mesh(const triangle_mesh& mesh,
@@ -66,6 +67,7 @@ private:
     texture blank_tex;
 
     mat3f render_frame;
+    float render_scale;
     mat4f projection_matrix;
 
     // video recording

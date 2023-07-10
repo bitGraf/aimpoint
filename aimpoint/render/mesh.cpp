@@ -182,3 +182,75 @@ bool triangle_mesh::load_from_mesh_file(const char* filename, float x_scale_fact
 
     return true;
 }
+
+bool triangle_mesh::create_plane(vec3f normal, float sizeX, float sizeY) {
+    num_prims = 1;
+
+    handles   = (uint32*)malloc(sizeof(uint32)*num_prims);
+    num_verts = (uint32*)malloc(sizeof(uint32)*num_prims);
+    num_inds  = (uint32*)malloc(sizeof(uint32)*num_prims);
+    mat_idxs  = (uint32*)malloc(sizeof(uint32)*num_prims);
+
+    num_verts[0] = 4;
+    num_inds[0] = 6;
+    mat_idxs[0] = 0;
+    int32 num_attr = 8;
+
+    // determine frame
+    vec3f Z_vec(0.0f, 0.0f, 1.0f);
+
+    normal = laml::normalize(normal);
+    vec3f tangent = laml::cross(Z_vec, normal);
+    float m = laml::length(tangent);
+    if (laml::abs(m) < 1e-9) {
+        vec3f Y_vec(0.0f, 1.0f, 0.0f);
+        tangent = laml::normalize(laml::cross(Y_vec, normal));
+    } else {
+        tangent = tangent/m;
+    }
+    vec3f bitangent = laml::cross(normal, tangent);
+
+    // extents
+    vec3f V0 = sizeX*(-bitangent) + sizeY*( tangent);
+    vec3f V1 = sizeX*( bitangent) + sizeY*( tangent);
+    vec3f V2 = sizeX*( bitangent) + sizeY*(-tangent);
+    vec3f V3 = sizeX*(-bitangent) + sizeY*(-tangent);
+
+    // create simple plane mesh
+    float verts[] = {V0.x, V0.y, V0.z, normal.x, normal.y, normal.z, 0.0f, 0.0f,
+                     V1.x, V1.y, V1.z, normal.x, normal.y, normal.z, 1.0f, 0.0f,
+                     V2.x, V2.y, V2.z, normal.x, normal.y, normal.z, 1.0f, 1.0f,
+                     V3.x, V3.y, V3.z, normal.x, normal.y, normal.z, 0.0f, 1.0f,
+    };
+    uint32 inds[] = {
+                    0, 1, 2,
+                    0, 2, 3
+    };
+    // load points into GPU
+    unsigned int VBO, EBO;
+    glGenVertexArrays(1, &handles[0]);
+    glGenBuffers(1, &VBO);
+    glGenBuffers(1, &EBO);
+
+    glBindVertexArray(handles[0]);
+
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(float)*num_verts[0]*num_attr, verts, GL_DYNAMIC_DRAW);
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(uint32)*num_inds[0], inds, GL_DYNAMIC_DRAW);
+
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, num_attr * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, num_attr * sizeof(float), (void*)(3*sizeof(float)));
+    glEnableVertexAttribArray(1);
+
+    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, num_attr * sizeof(float), (void*)(6*sizeof(float)));
+    glEnableVertexAttribArray(2);
+
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
+
+    return true;
+}
