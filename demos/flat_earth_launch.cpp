@@ -32,7 +32,7 @@ int flat_earth_launch_demo::init() {
 
     earth_diffuse.load_texture_file("data/earth.jpg");
     //earth_diffuse.load_texture_file("data/map.png");
-    rocket_mesh.load_from_mesh_file("data/blahaj.mesh", 50.0f);
+    rocket_mesh.load_from_mesh_file("data/rocket.mesh", 100.0f);
 
     mat4f projection_matrix;
     laml::transform::create_projection_perspective(projection_matrix, 75.0f, renderer.get_AR(), 1000.0f, 30000000.0f);

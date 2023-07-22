@@ -130,6 +130,11 @@ void rocket_flat_earth_ltg::major_step(double t, double dt) {
         Tgo -= dt;
     }
 
+    // to fix the coordinate frame issue
+    mat3d correction_mat(0.0, 1.0, 0.0,
+                         -1.0, 0.0, 0.0,
+                         0.0, 0.0, 1.0);
+
     if (Tgo > 0.0) {
         if (Tgo > 10.0) {
             // use the existing steering coefficients
@@ -145,7 +150,7 @@ void rocket_flat_earth_ltg::major_step(double t, double dt) {
 
             mat3d rot;
             laml::transform::create_ZXZ_rotation(rot, 0.0, alpha, 0.0);
-            state.orientation = laml::transform::quat_from_mat(laml::transpose(rot));
+            state.orientation = laml::transform::quat_from_mat(laml::mul(laml::transpose(rot), correction_mat));
         } else {
             double m = mass;
             double y = -state.position.z;
@@ -166,7 +171,7 @@ void rocket_flat_earth_ltg::major_step(double t, double dt) {
 
             mat3d rot;
             laml::transform::create_ZXZ_rotation(rot, 0.0, alpha, 0.0);
-            state.orientation = laml::transform::quat_from_mat(laml::transpose(rot));
+            state.orientation = laml::transform::quat_from_mat(laml::mul(laml::transpose(rot), correction_mat));
             if (update_step_num % 100 == 0)
                 spdlog::info("[{0:.3f}] Terminal: Tgo={1:.3f} alpha={2:.3f} throttle={3:.5f}", t, Tgo, alpha, throttle);
         }
