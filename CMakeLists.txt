@@ -62,6 +62,7 @@ add_library( aimpoint-lib STATIC
     ${SRC_DIR}/body_type/t_bar.cpp
     ${SRC_DIR}/body_type/mass_spring_damper.cpp
     ${SRC_DIR}/body_type/satellite.cpp
+    #${SRC_DIR}/body_type/round_earth_rocket_flat_approx.cpp
     ${SRC_DIR}/render/renderer.cpp
     ${SRC_DIR}/render/mesh.cpp
     ${SRC_DIR}/render/texture.cpp
@@ -76,6 +77,7 @@ add_library( aimpoint-lib STATIC
     ${SRC_DIR}/body_type/t_bar.h
     ${SRC_DIR}/body_type/mass_spring_damper.h
     ${SRC_DIR}/body_type/satellite.h
+    #${SRC_DIR}/body_type/round_earth_rocket_flat_approx.h
     ${SRC_DIR}/render/renderer.h
     ${SRC_DIR}/render/mesh.h
     ${SRC_DIR}/render/texture.h
